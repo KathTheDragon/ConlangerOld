@@ -409,18 +409,18 @@ class Word():
         else:
             return pos+1
     
-    def matchEnv(self, pos, len, env):
+    def matchEnv(self, pos, len, env): #test if the env matches the word at index pos
         if len(env) == 1:
             return env[0] in self
         elif len(env) == 2:
             if pos:
                 matchLeft = self[::-1].find(env[0],-pos)
-            else:
+            else: #at the left edge, which can only be matched by a null env
                 matchLeft = -1 if env[0] else 0
             matchRight = self.find(env[1], pos+len)
             return matchLeft == matchRight == 0
     
-    def matchTar(self, tar, rule):
+    def matchTar(self, tar, rule): #get all places where tar matches against self
         matches = []
         if tar:
             tar, count = tar
@@ -428,8 +428,8 @@ class Word():
             tar, count = [], []
         index = 0
         while True:
-            match = self.find(tar, index)
-            if match == -1:
+            match = self.find(tar, index) #find the next place where tar matches
+            if match == -1: #no more matches
                 break
             index += match
             matches.append(index)
@@ -438,11 +438,11 @@ class Word():
             count = range(len(matches))
         envs, excs = rule.envs, rule.excs
         for match in sorted([matches[c] for c in count], reverse=True):
-            for exc in excs:
+            for exc in excs: #don't keep this match if any exception matches
                 if self.matchEnv(match, len(tar), exc):
                     break
             else:
-                for env in envs:
+                for env in envs: #keep this match if any environment matches
                     if self.matchEnv(match, len(tar), env):
                         yield match
                         break
@@ -494,13 +494,14 @@ class Word():
         return
 
 def run(iLex, strm):
+    #iLex is the input lexicon, and strm is the set of rules and cat definitions
     global Cats
-    Words = [Word(lex) for lex in iLex]
-    Rules = []
+    Words = [Word(lex) for lex in iLex] #parse the words
+    Rules = [] #we use a list to store rules, since they may be applied multiple times
     for flow in strm:
         if flow == "":
             continue
-        elif "=" in flow: #flow is a cat
+        elif "=" in flow: #flow is a cat definition
             try:
                 if flow.count("=") != 1:
                     raise FormatError("there should only be one '='")
@@ -509,7 +510,7 @@ def run(iLex, strm):
                 name, vals = flow.split(op)
                 lbr = name.find("[")
                 rbr = name.find("]")
-                if lbr == rbr == -1:
+                if lbr == rbr == -1: #no feature definition
                     feature = None
                 elif lbr < rbr-1 and name.count("[") == name.count("]") == 1:
                     name, feature = name.strip("]").split("[")
@@ -521,33 +522,30 @@ def run(iLex, strm):
                     exec("Cats[name][feature] {} Cat(vals)".format(op))
                 else:
                     exec("Cats[name] {} Cat(vals)".format(op))
-                for cat in Cats.keys():
+                for cat in Cats.keys(): #discard blank categories
                     if not Cats[cat]:
                         del Cats[cat]
             except FormatError as e:
                 print("Error parsing cat '{}': {}".format(flow, e.args[0]))
+                continue
         else: #flow is a rule
             try:
-                rule = Rule(flow)
+                rule = Rule(flow) #parse the rule
             except FormatError as e:
                 print("Error parsing rule '{}': {}".format(flow, e.args[0]))
                 continue
-            Rules += [rule]
-            print("Words =",[str(word) for word in Words])
-            for Word in Words:
-                for rule in Rules[::-1]:
-                    print("rule =",rule)
-                    repeat = rule.flag["repeat"]
-                    while True:
+            Rules.append(rule)
+            print("Words =",[str(word) for word in Words]) #for debugging
+            for word in Words:
+                for rule in reversed(Rules):
+                    print("rule =",rule) #for debugging
+                    for i in range(rule.flag["repeat"]):
                         try:
-                            Word.applyRule(rule)
-                        except WordUnchanged:
-                            break
-                        repeat -= 1
-                        if not repeat:
+                            word.applyRule(rule)
+                        except WordUnchanged: #if the word didn't change, stop applying
                             break
             for i in reversed(range(len(Rules))):
                 Rules[i].flag["age"] -= 1
-                if Rules[i].flag["age"] == 0:
+                if Rules[i].flag["age"] == 0: #if the rule has 'expired', discard it
                     del Rules[i]
     return [str(word) for word in Words]
