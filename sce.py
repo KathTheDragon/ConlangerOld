@@ -10,6 +10,7 @@ Functions:
 """"""
 ==================================== To-do ====================================
 === Bug-fixes ===
+Word.find is not aware that optional segments are now in tuples
 
 === Implementation ===
 Utilise new implementation of Word as sequence type
@@ -47,20 +48,19 @@ class Cat():
     def __init__(self, vals, ftrs=None):
         _vals = []
         _ftrs = {}
-        if isinstance(vals, str):
+        if isinstance(vals, str): #we want an iteratible with each value as an element
             vals = vals.replace(","," ").split()
         for val in vals:
-            if "[" in val:
+            if "[" in val: #other categories are included as [name]
                 val = val[1:-1]
                 _vals += Cats[val].vals
             else:
                 _vals += [val]
-        if ftrs != None:
-            for ftr,vals in ftrs.items():
-                ftrs[ftr] = [val for val in Cat(vals) if val in self]
-                if not ftrs[ftr] or ftrs[ftr] == _vals:
-                    del ftrs[ftr]
-            _ftrs = ftrs
+        if ftrs != None: #we have features to create
+            for ftr,vals in ftrs.items(): #features may only contain values actually in the category
+                _ftrs[ftr] = [val for val in Cat(vals) if val in self] #can this be delegated?
+                if not _ftrs[ftr] or _ftrs[ftr] == _vals:
+                    del _ftrs[ftr] #features that are empty or identical with the category are redundant
         self.vals = _vals
         self.ftrs = _ftrs
     
@@ -114,7 +114,7 @@ class Cat():
         return Cat(vals, self.ftrs)
 
 class Rule():    
-    def __init__(self, rule):
+    def __init__(self, rule): #format is tars>reps/envs!excs flag; envs, excs, and flag are all optional
         self.rule = rule
         if " " in rule:
             rule, flag = rule.split()
@@ -130,12 +130,12 @@ class Rule():
             envs = "_"
         if rule.count("+") + rule.count("-") + rule.count(">") != 1:
             raise FormatError("there must be exactly one of '+', '-' and '>' in the rule")
-        if "+" in rule:
+        if "+" in rule: #+reps/... is alias for >reps/...
             if rule.find("+"):
                 raise FormatError("'+' must be at the beginning of the rule")
             else:
                 tars, reps = "", rule[1:]
-        if "-" in rule:
+        if "-" in rule: #-tars/... is alias for tars>/...
             if rule.find("-"):
                 raise FormatError("'-' must be at the beginning of the rule")
             else:
@@ -163,33 +163,29 @@ class Rule():
 
     @staticmethod
     def parseSyms(syms):
-        for lbr, rbr in zip("([{",")]}"):
+        for lbr, rbr in zip("([{",")]}"): #check for unbalanced brackets
             if syms.count(lbr) != syms.count(rbr):
                 raise FormatError("unbalanced '{}{}'".format(lbr,rbr))
         for char in "()[]{}|#*_":
             syms = syms.replace(char, "."+char+".")
         syms = syms.replace(".", " ").split()
-        ends = [[],[],[]]
-        for i in reversed(range(len(syms))):
-            if syms[i] in ")":
-                ends[0].append(i)
-            if syms[i] in "]":
-                ends[1].append(i)
-            if syms[i] in "}":
-                ends[2].append(i)
+        ends = []
+        for i in reversed(range(len(syms))): #process brackets
+            if syms[i] in ")]}":
+                ends.append(i)
             elif syms[i] == "(":
-                if ends[0][-1] > ends[1][-1] or ends[0][-1] > ends[2][-1]:
+                if syms[ends[-1]] != ")":
                     raise FormatError("cannot interleave bracket types")
                 end = ends[0].pop()
                 syms[i:end+1] = tuple(syms[i+1:end])
             elif syms[i] == "[":
-                if ends[1][-1] > ends[0][-1] or ends[1][-1] > ends[2][-1]:
+                if syms[ends[-1]] != "]":
                     raise FormatError("cannot interleave bracket types")
                 end = ends[1].pop()
-                if "|" in syms[i+1:end]:
+                if "|" in syms[i+1:end]: #nonce category
                     temp = syms[i+1:end]
                     cat = []
-                    while True:
+                    while True: #the list is partitioned by "|"
                         index = temp.find("|")
                         if index == -1:
                             cat.append(temp)
@@ -199,7 +195,7 @@ class Rule():
                             cat.append(temp[:index])
                             del temp[:index+1]
                     syms[i:end+1] = Cat(cat)
-                elif ("+" in syms[i+1] or "-" in syms[i+1]) and end == i+2:
+                elif ("+" in syms[i+1] or "-" in syms[i+1]) and end == i+2: #feature
                     temp = syms[i+1]
                     temp = temp.replace("+"," +").replace("-"," -").split()
                     temp[0] = Cats[temp[0]]
@@ -209,12 +205,12 @@ class Rule():
                         ftr = temp[1][1:]
                         cat = cat & cat[ftr] if op == "+" else cat - cat[ftr]
                         temp[:2] = cat
-                elif syms[i+1] in Cats and end == i+2:
+                elif syms[i+1] in Cats and end == i+2: #named category
                     syms[i:end+1] = Cats[syms[i+1]]
                 else:
                     raise FormatError("mal-formatted category") # Improve message?
             elif syms[i] == "{": #unimplemented
-                if ends[2][-1] > ends[0][-1] or ends[2][-1] > ends[1][-1]:
+                if syms[ends[-1]] != "}":
                     raise FormatError("cannot interleave bracket types")
                 end = ends[2].pop()
                 del syms[i:end+1]
@@ -222,7 +218,7 @@ class Rule():
     
     @staticmethod
     def parseTars(tars):
-        Tars = []
+        _tars = []
         for tar in tars.replace(",", " ").split():
             if "@" in tar:
                 try:
@@ -233,53 +229,55 @@ class Rule():
             else:
                 count = []
             tar = Rule.parseSyms(tar)
-            Tars += [(tar,count)]
-        return Tars
+            _tars += [(tar,count)]
+        return _tars
 
     @staticmethod
     def parseReps(reps):
-        Reps = []
+        _reps = []
         for rep in reps.replace(",", " ").split():
             if "(" in rep or ")" in rep:
                 raise FormatError("optional segments not allowed in rep")
             rep = Rule.parseSyms(rep)
-            Reps += [rep]
-        return Reps
+            _reps += [rep]
+        return _reps
 
     @staticmethod
     def parseEnvs(envs):
-        Envs = []
+        _envs = []
         for env in envs.replace(",", " ").split():
-            if "~" in env:
-                Envs += Rule.parseEnvs(env[1:]+"_,_"+env[1:])
+            if "~" in env: #~X is equivalent to X_,_X; add checks for bad formatting
+                _envs += Rule.parseEnvs(env[1:]+"_,_"+env[1:])
             else:
                 if env.count("_") > 1:
                     raise FormatError("there should be no more than one '_' per env")
                 env = Rule.parseSyms(env)
-                if "_" not in env:
-                    env = [env]
-                else:
+                if "_" in env:
                     index = env.index("_")
                     if index == 0:
                         env = [[], env[1:]]
                     else:
                         env = [env[index-1::-1], env[index+1:]]
-                Envs += [env]
-        return Envs
+                else:
+                    env = [env]
+                _envs.append(env)
+        return _envs
     
     @staticmethod
-    def parseFlag(flag):
-        Flags = {"ltr":0, "repeat":1, "age":1}
-        flags = flag.replace(",", " ").split()
-        for flag in flags:
-            if flag not in Flags:
+    def parseFlag(flags):
+        _flags = {"ltr":0, "repeat":1, "age":1} #default values
+        for flag in flags.replace(",", " ").split():
+            if flag not in _flags:
                 raise FormatError("'{}' is not a valid flag".format(flag))
             if ":" in flag:
-                flag, arg = flag.split(":")
-                Flags[flag] = arg
+                try:
+                    flag, arg = flag.split(":")
+                except ValueError:
+                    raise FormatError("each flag may only be followed by one ':'")
+                _flags[flag] = arg
             else:
-                Flags[flag] = 1-Flags[flag]
-        return Flags
+                _flags[flag] = 1-_flags[flag]
+        return _flags
     
     def reverse(self):
         for i in range(len(self.tars)):
@@ -289,18 +287,20 @@ class Rule():
         for i in range(len(self.envs)):
             self.envs[i].reverse()
             self.envs[i][0].reverse()
-            self.envs[i][1].reverse()
+            if len(self.envs[i]) == 2:
+                self.envs[i][1].reverse()
         for i in range(len(self.excs)):
             self.excs[i].reverse()
             self.excs[i][0].reverse()
-            self.excs[i][1].reverse()
+            if len(self.excs[i]) == 2:
+                self.excs[i][1].reverse()
     
-class Word():
+class Word(): #__init__ and __str__ are complicated and I need to think about them harder
     def __init__(self, lex):
         if isinstance(lex, str):
             test = ""
             phones = []
-            for char in "#"+lex.replace(" ","#")+"#"+Sep:
+            for char in "#"+lex.replace(" ","#")+"#"+Sep: #flank the word with '#' to indicate the edges
                 test += char
                 while len(test) > 1 and all(g.find(test) for g in Graphs):
                     for i in reversed(range(1,len(test)+1)):
@@ -310,7 +310,7 @@ class Word():
                             break
             self.phones = phones
         else:
-            for i in reversed(range(1,len(lex))):
+            for i in reversed(range(1,len(lex))): #clean up multiple consecutive '#'s
                 if lex[i] == lex[i-1] == "#":
                     del lex[i]
             self.phones = list(lex)
@@ -382,18 +382,18 @@ class Word():
     def find(self, sub, start=None, end=None):
         if start is not None or end is not None:
             return self[start:end].find(sub)
-        i = 0 #Position in the word
+        i = 0 #position in the word
         for j in range(len(sub)):
             sym = sub[j]
             if i >= len(self):
-                return -1
-            elif sym[0] == "(": #Optional; if this fails, try the next sym
+                return -1 #we've run out of word, so this fails
+            elif sym[0] == "(": #optional; this needs to changed, as optionals are tuples
                 seg, sym = self[i], sym[1:-1]
                 if not (seg in sym if isinstance(sym, Cat) else seg == sym):
-                    i -= 1
-            elif sym == "*": #Wildcard
-                if self[i:].find(sub[j+1:]) == -1:
-                    break
+                    i -= 1 #if this fails, we jump back to where we were
+            elif sym == "*": #wildcard
+                if self.find(sub[j+1:],i) == -1:
+                    break #only fails if the rest of the sequence is nowhere present
                 else:
                     return 0
             else:
