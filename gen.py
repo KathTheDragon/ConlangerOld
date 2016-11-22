@@ -5,17 +5,17 @@ Exceptions:
 
 Functions:
     dist       -- provides a power law distribution
-    peakedDist -- provides a peaked power law distribution
+    peaked_dist -- provides a peaked power law distribution
     populate   -- generates a list of graphemes according to a pattern
-    genWord    -- generates a word
-    genRoot    -- generates a root
+    gen_word    -- generates a word
+    gen_root    -- generates a root
 """"""
 ==================================== To-do ====================================
 === Bug-fixes ===
 Doesn't seem to be checking exceptions correctly (not urgent-urgent)
 
 === Implementation ===
-Might be worth having genWord() create the Word() at the beginning rather than the end
+Might be worth having gen_word() create the Word() at the beginning rather than the end
 
 === Features ===
 
@@ -38,7 +38,7 @@ A probability distribution can then be obtained by finding the inverse of P(n). 
 Obtaining a variant with a peak can be done by using two distributions, one reversed, with their modes overlapping. This can be done by taking the range of x corresponding to the reversed section and rescaling it as follows, where a is the frequency of the mode, and c the cumulative frequency of the bins before the mode: x -> 1-x/(a+c). Thus, when x<c, we use a distribution with m+1 bins, mode a/(a+c), and the rescaled random variable. For the remainder, we use a distribution with r-m bins, mode a/(1-c), and a rescaled variable x -> (x-c)/(1-c). Note that the mode belongs to this second distribution.
 """
 
-from core import *
+from core import LangException, Cat, Word
 from random import random, choice
 from math import log, floor, ceil
 
@@ -51,15 +51,16 @@ def dist(bins, a=0, x=None): #first bin has frequency a, random variable x
     """Returns an element of 'bins' according to a power law distribution.
     
     Arguments:
-        bins -- an ordered collection of elements (str, list, tuple)
+        bins -- a non-empty ordered collection of elements (str, list, tuple)
         a    -- the frequency that the first bin should be selected (0 for equiprobable distribution) (float)
         x    -- a random variable supplied if the default random.random() is not desired (float)
     
     Raises TypeError on invalid argument types.
     """
+    #See the docstring titled "Mathematical Model" for the maths
     r = len(bins)
-    if r == 0: #whyyyyyyyyyyyy
-        return
+    if r == 0:
+        raise ValueError("argument 'r' must not be empty")
     if a <= 0: #use equiprobable distribution instead
         return choice(bins)
     if r == 1 or a >= 1: #only one bin
@@ -71,7 +72,7 @@ def dist(bins, a=0, x=None): #first bin has frequency a, random variable x
     p = (1-a)+(a*(1-a)**r)/(1-a*r*(1-a)**(r-1))
     return bins[floor(log(1-x*(1-p**r),p))]
 
-def peakedDist(bins, a=0, m=0, c=0):
+def peaked_dist(bins, a=0, m=0, c=0):
     """Returns an element of 'bins' according to a peaked power law distribution.
     
     Arguments:
@@ -80,9 +81,10 @@ def peakedDist(bins, a=0, m=0, c=0):
         m    -- the index of the most frequent bin
         c    -- the cumulative frequency of bins 0 to m-1
     """
+    #See the docstring titled "Mathematical Model" for the maths
     if c >= 1: #cri
         raise ValueError("argument 'c' must be less than 1")
-    if m <= 0 or c <= 0:
+    if m <= 0 or c <= 0: #all bins before the mode are ignored
         return dist(bins[m:], a)
     x = random()
     if x < c: #in the left-hand branch
@@ -90,19 +92,19 @@ def peakedDist(bins, a=0, m=0, c=0):
     else:
         return dist(bins[m:], a/(1-c), (x-c)/(1-c))
 
-def populate(pattern, freq, all=False):
+def populate(pattern, frequency, all=False):
     """Generate a word section according to 'pattern'
     
     Arguments:
-        pattern -- the pattern to generate (list)
-        freq    -- grapheme drop-off frequency (float)
-        all     -- indicator to generate every possible pattern, or one random pattern (bool)
+        pattern   -- the pattern to generate (list)
+        frequency -- grapheme drop-off frequency (float)
+        all       -- indicator to generate every possible pattern, or one random pattern (bool)
     """
     if not all: #one random syllable
         result = []
         for seg in pattern:
             if isinstance(seg, Cat):
-                result.append(dist(seg, freq))
+                result.append(dist(seg, frequency))
             elif seg == '"':
                 result.append(result[-1])
             else:
@@ -125,7 +127,7 @@ def populate(pattern, freq, all=False):
                     results[i].append(seg)
         return results
 
-def genWord(lang):
+def gen_word(lang):
     """Generate a single word as specified by 'lang'.
     
     Arguments:
@@ -136,9 +138,9 @@ def genWord(lang):
     Raises ExceededMaxRunsError when the word repeatedly fails to be valid
     """
     word = ['#']
-    patterns, counts, constraints, freq, monofreq = lang.wordConfig
+    patterns, counts, constraints, frequency, monofreq = lang.wordConfig
     pattFreq, phonFreq = lang.patternFreq, lang.graphFreq
-    sylCount = peakedDist(counts, freq, 1, monofreq)
+    sylCount = peaked_dist(counts, frequency, 1, monofreq)
     for i in range(sylCount-1): #generate all but the final syllable
         for j in range(MAX_RUNS):
             pattern = dist(patterns, pattFreq)
@@ -168,7 +170,7 @@ def genWord(lang):
     else:
         raise ExceededMaxRunsError()
 
-def genRoot(lang):
+def gen_root(lang):
     """Generate a single root as specified by 'lang'.
     
     Arguments:
@@ -180,9 +182,9 @@ def genRoot(lang):
     """
     #generate a root according to rootPatterns
     root = []
-    patterns, counts, constraints, freq, monofreq = lang.rootConfig
+    patterns, counts, constraints, frequency, monofreq = lang.rootConfig
     pattFreq, phonFreq = lang.patternFreq, lang.graphFreq
-    sylCount = peakedDist(counts, freq, 1, monofreq)
+    sylCount = peaked_dist(counts, frequency, 1, monofreq)
     for i in range(sylCount): #generate all but the final syllable
         for j in range(MAX_RUNS):
             pattern = dist(patterns, pattFreq)

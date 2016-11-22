@@ -10,7 +10,7 @@ Classes:
     Config -- collection of gen.py configuration data
 
 Functions:
-    parseSyms    -- parses a string of symbols
+    parse_syms    -- parses a string of symbols
 """"""
 ==================================== To-do ====================================
 === Bug-fixes ===
@@ -19,6 +19,7 @@ Word.find is not aware that optional segments are now in tuples (not urgent)
 === Implementation ===
 Utilise new implementation of Word as sequence type
 - investigate reindexing Word
+Break out format checking into separate functions
 
 === Features ===
 Implement cat subsets
@@ -42,60 +43,60 @@ class Cat():
     """Represents a category of graphemes.
     
     Instance variables:
-        vals -- the values in the category (list)
+        values -- the values in the category (list)
     """
     
-    def __init__(self, vals):
+    def __init__(self, values):
         """Constructor for Cat.
         
         Arguments:
-            vals -- the values in the category (str, list)
+            values -- the values in the category (str, list)
         """
-        _vals = []
-        if isinstance(vals, str): #we want an iteratible with each value as an element
-            vals = vals.replace(","," ").split()
-        for val in vals:
-            if isinstance(val, Cat): #another category
-                _vals.extend(val.vals)
+        _values = []
+        if isinstance(values, str): #we want an iteratible with each value as an element
+            values = values.replace(","," ").split()
+        for value in values:
+            if isinstance(value, Cat): #another category
+                _values.extend(value.values)
             else:
-                _vals.append(val)
-        self.vals = _vals
+                _values.append(value)
+        self.values = _values
     
     def __repr__(self):
-        return "Cat({})".format(repr(self.vals))
+        return "Cat({})".format(repr(self.values))
     
     def __bool__(self):
-        return bool(self.vals)
+        return bool(self.values)
     
     def __len__(self):
-        return len(self.vals)
+        return len(self.values)
     
     def __getitem__(self, key):
-        return self.vals[key]
+        return self.values[key]
     
     def __setitem__(self, key, value):
-        self.vals[key] = value
+        self.values[key] = value
     
     def __delitem__(self, key):
-        del self.vals[key]
+        del self.values[key]
     
     def __iter__(self):
-        return iter(self.vals)
+        return iter(self.values)
     
     def __contains__(self, item):
-        return item in self.vals
+        return item in self.values
     
     def __and__(self, cat):
-        vals = [val for val in self if val in cat]
-        return Cat(vals)
+        values = [value for value in self if value in cat]
+        return Cat(values)
     
     def __add__(self, cat):
-        vals = self.vals + cat.vals
-        return Cat(vals)
+        values = self.values + cat.values
+        return Cat(values)
     
     def __sub__(self, cat):
-        vals = [val for val in self if val not in cat]
-        return Cat(vals)
+        values = [value for value in self if value not in cat]
+        return Cat(values)
 
 class Word():
     """
@@ -106,7 +107,7 @@ class Word():
     Methods:
     
     """
-    def __init__(self, lex=None, syllables=None, graphs=None):
+    def __init__(self, lexeme=None, syllables=None, graphs=None):
         """
         
         Arguments:
@@ -118,12 +119,12 @@ class Word():
         else:
             self.sep = graphs[0]
             self.graphs = graphs[1:]
-        if lex is None:
+        if lexeme is None:
             self.phones = []
-        elif isinstance(lex, str):
+        elif isinstance(lexeme, str): #black magic
             test = ""
             phones = []
-            for char in "#"+lex.replace(" ","#")+"#"+self.sep: #flank the word with '#' to indicate the edges
+            for char in "#"+lexeme.replace(" ","#")+"#"+self.sep: #flank the word with '#' to indicate the edges
                 test += char
                 while len(test) > 1 and all(g.find(test) for g in self.graphs):
                     for i in reversed(range(1,len(test)+1)):
@@ -133,10 +134,10 @@ class Word():
                             break
             self.phones = phones
         else:
-            for i in reversed(range(1,len(lex))): #clean up multiple consecutive '#'s
-                if lex[i] == lex[i-1] == "#":
-                    del lex[i]
-            self.phones = list(lex)
+            for i in reversed(range(1,len(lexeme))): #clean up multiple consecutive '#'s
+                if lexeme[i] == lexeme[i-1] == "#":
+                    del lexeme[i]
+            self.phones = list(lexeme)
         self.syllables = syllables #do a bit of sanity checking here
     
     def __repr__(self):
@@ -240,7 +241,7 @@ class Word():
         else:
             return pos+1
     
-    def matchEnv(self, env, pos=0, run=0): #test if the env matches the word at index pos
+    def match_env(self, env, pos=0, run=0): #test if the env matches the word at index pos
         """
         
         Arguments:
@@ -256,7 +257,7 @@ class Word():
             matchRight = self.find(env[1], pos+run)
             return matchLeft == matchRight == 0
     
-    def matchTar(self, tar, rule): #get all places where tar matches against self
+    def match_tar(self, tar, rule): #get all places where tar matches against self
         """
         
         Arguments:
@@ -280,13 +281,19 @@ class Word():
         envs, excs = rule.envs, rule.excs
         for match in sorted([matches[c] for c in count], reverse=True):
             for exc in excs: #don't keep this match if any exception matches
-                if self.matchEnv(exc, match, len(tar)):
+                if self.match_env(exc, match, len(tar)):
                     break
             else:
                 for env in envs: #keep this match if any environment matches
-                    if self.matchEnv(env, match, len(tar)):
+                    if self.match_env(env, match, len(tar)):
                         yield match
                         break
+    
+    def substitute(self, rule, tar, rep):
+        matches = self.match_tar(tar, rule)
+        run = len(tar[0])
+        for match in matches:
+            self[match:match+run] = rep
     
     def replace(self, start, run, rep):
         self[start:start+run] = rep
@@ -295,7 +302,7 @@ class Word():
 Config = namedtuple('Config', 'patterns, counts, constraints, freq, monofreq')
 
 #== Functions ==#
-def parseSyms(syms, cats):
+def parse_syms(syms, cats):
     """
     
     Arguments:
@@ -307,16 +314,16 @@ def parseSyms(syms, cats):
     for char in "()[]{}|#*_":
         syms = syms.replace(char, "."+char+".")
     syms = syms.replace(".", " ").split()
-    ends = []
+    ends = [] #store indices of close-brackets here
     for i in reversed(range(len(syms))): #process brackets
         if syms[i] in ")]}":
             ends.append(i)
-        elif syms[i] == "(":
+        elif syms[i] == "(": #optional segment - to tuple
             if syms[ends[-1]] != ")":
                 raise FormatError("cannot interleave bracket types")
             end = ends.pop()
             syms[i:end+1] = tuple(syms[i+1:end])
-        elif syms[i] == "[":
+        elif syms[i] == "[": #category - to list and then Cat
             if syms[ends[-1]] != "]":
                 raise FormatError("cannot interleave bracket types")
             end = ends.pop()
@@ -349,7 +356,7 @@ def parseSyms(syms, cats):
                 syms[i:end+1] = [cats[syms[i+1]]]
             else:
                 raise FormatError("mal-formatted category") # Improve message?
-        elif syms[i] == "{": #unimplemented
+        elif syms[i] == "{": #subset - unimplemented, delete contents
             if syms[ends[-1]] != "}":
                 raise FormatError("cannot interleave bracket types")
             end = ends.pop()

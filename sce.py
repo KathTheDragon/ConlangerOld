@@ -7,8 +7,8 @@ Classes:
     Rule -- represents a sound change rule
 
 Functions:
-    parseRuleset -- parses a sound change ruleset
-    applyRule    -- applies a sound change rule to a word
+    parse_ruleset -- parses a sound change ruleset
+    apply_rule    -- applies a sound change rule to a word
 """"""
 ==================================== To-do ====================================
 === Bug-fixes ===
@@ -32,7 +32,7 @@ Write docstrings
 Raise Exceptions where necessary
 """
 
-from core import *
+from core import LangException, Cat, parse_syms
 
 class WordUnchanged(LangException):
     """Used to indicate that the word was not changed by the rule."""
@@ -49,10 +49,10 @@ class Rule():
         flag -- flags for altering execution (dict)
     
     Methods:
-        parseTars -- parse the target field of a rule
-        parseReps -- parse the replacement field of a rule
-        parseEnvs -- parse the environment field of a rule
-        parseFlag -- parse the flags of a rule
+        parse_tars -- parse the target field of a rule
+        parse_reps -- parse the replacement field of a rule
+        parse_envs -- parse the environment field of a rule
+        parse_flag -- parse the flags of a rule
     """  
     def __init__(self, rule, cats): #format is tars>reps/envs!excs flag; envs, excs, and flag are all optional
         """
@@ -62,7 +62,7 @@ class Rule():
         """
         self.rule = rule
         if " " in rule:
-            rule, flag = rule.split()
+            rule, flag = rule.split(" ")
         else:
             flag = ""
         if "!" in rule:
@@ -91,11 +91,11 @@ class Rule():
                 raise FormatError("tars and reps may not both be empty")
             if "," in tars and "," not in reps:
                 reps = ",".join([reps]*(tars.count(",")+1))
-        self.tars = Rule.parseTars(tars, cats)
-        self.reps = Rule.parseReps(reps, cats)
-        self.envs = Rule.parseEnvs(envs, cats)
-        self.excs = Rule.parseEnvs(excs, cats)
-        self.flag = Rule.parseFlag(flag)
+        self.tars = Rule.parse_tars(tars, cats)
+        self.reps = Rule.parse_reps(reps, cats)
+        self.envs = Rule.parse_envs(envs, cats)
+        self.excs = Rule.parse_envs(excs, cats)
+        self.flag = Rule.parse_flag(flag)
         if self.flag["ltr"]:
             self.reverse()
         return
@@ -107,7 +107,7 @@ class Rule():
         return self.rule
     
     @staticmethod
-    def parseTars(tars, cats):
+    def parse_tars(tars, cats):
         """
         
         Arguments:
@@ -123,12 +123,12 @@ class Rule():
                 count = count.replace("|", " ").split()
             else:
                 count = []
-            tar = parseSyms(tar, cats)
+            tar = parse_syms(tar, cats)
             _tars += [(tar,count)]
         return _tars
 
     @staticmethod
-    def parseReps(reps, cats):
+    def parse_reps(reps, cats):
         """
         
         Arguments:
@@ -138,12 +138,12 @@ class Rule():
         for rep in reps.replace(",", " ").split():
             if "(" in rep or ")" in rep:
                 raise FormatError("optional segments not allowed in rep")
-            rep = parseSyms(rep, cats)
+            rep = parse_syms(rep, cats)
             _reps += [rep]
         return _reps
 
     @staticmethod
-    def parseEnvs(envs, cats):
+    def parse_envs(envs, cats):
         """
         
         Arguments:
@@ -152,11 +152,11 @@ class Rule():
         _envs = []
         for env in envs.replace(",", " ").split():
             if "~" in env: #~X is equivalent to X_,_X; add checks for bad formatting
-                _envs += Rule.parseEnvs(env[1:]+"_,_"+env[1:], cats)
+                _envs += Rule.parse_envs(env[1:]+"_,_"+env[1:], cats)
             else:
                 if env.count("_") > 1:
                     raise FormatError("there should be no more than one '_' per env")
-                env = parseSyms(env, cats)
+                env = parse_syms(env, cats)
                 if "_" in env:
                     index = env.index("_")
                     if index == 0:
@@ -169,7 +169,7 @@ class Rule():
         return _envs
     
     @staticmethod
-    def parseFlag(flags):
+    def parse_flag(flags):
         """
         
         Arguments:
@@ -205,7 +205,7 @@ class Rule():
             if len(exc) == 2:
                 exc[1].reverse()
 
-def parseRuleset(ruleset, cats):
+def parse_ruleset(ruleset, cats):
     """Parse a sound change ruleset.
     
     Arguments:
@@ -250,7 +250,7 @@ def parseRuleset(ruleset, cats):
             del ruleset[i]
     return ruleset
     
-def applyRule(word, rule):
+def apply_rule(word, rule):
     """Apply a single sound change rule to a single word.
     
     Arguments:
@@ -266,36 +266,23 @@ def applyRule(word, rule):
     if rule.flag["ltr"]:
         word.reverse()
     if not tars: #Epenthesis
-        matches = word.matchTar([], rule)
-        _run = 0
-        _rep = reps[0]
-        for match in matches:
-            word.replace(match, _run, _rep)
+        word.substitute(rule, ([],[]), reps[0])
     elif not reps: #Deletion
         for tar in tars:
-            matches = word.matchTar(tar, rule)
-            _run = len(tar[0])
-            _rep = []
-            for match in matches:
-                word.replace(match, _run, _rep)
+            word.substitute(rule, tar, [])
     else: #Substitution
         for tar, rep in zip(tars, reps):
-            matches = word.matchTar(tar, rule)
-            tar = tar[0]
-            if isinstance(rep[0], Cat) and isinstance(tar[0], Cat):
-                tar, rep = tar[0], rep[0]
+            if isinstance(rep[0], Cat) and isinstance(tar[0][0], Cat): #Cat substitution
+                matches = word.match_tar(tar, rule)
+                tar, rep = tar[0][0], rep[0]
                 for match in matches:
                     index = tar.find(word[match])
                     _rep = [rep[index]]
                     word.replace(match, 1, _rep)
             else:
-                _run = len(tar)
                 if rep == ["?"]: #Metathesis
-                    _rep = tar[::-1]
-                else:
-                    _rep = rep
-                for match in matches:
-                    word.replace(match, _run, _rep)
+                    rep = tar[0][::-1]
+                word.substitute(rule, tar, rep)
     if rule.flag["ltr"]:
         word.reverse()
     if word.phones == phones:

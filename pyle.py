@@ -7,6 +7,9 @@ Classes:
 === Bug-fixes ===
 
 === Implementation ===
+Trim down Language.__init__()
+Cut back on excessive type-checking
+Improve handling of wordConfig and rootConfig in Language.__init__()
 
 === Features ===
 Add saving/loading Languages to/from file
@@ -17,7 +20,7 @@ Raise Exceptions where necessary (done?)
 
 """
 
-from core import *
+from core import Cat, Config
 import gen
 import sce
 
@@ -45,10 +48,10 @@ class Language():
         graphFreq   -- drop-off frequency for graphemes (float)
     
     Methods:
-        parsePatterns -- parse a string denoting generation patterns
-        genWord       -- generate words
-        genRoot       -- generate roots
-        applyRules    -- apply sound changes
+        parse_patterns -- parse a string denoting generation patterns
+        gen_word       -- generate words
+        gen_root       -- generate roots
+        apply_rules    -- apply sound changes
     """
     
     def __init__(self, name='', cats=None, wordConfig=None, rootConfig=None, patternFreq=0, graphFreq=0):
@@ -56,7 +59,7 @@ class Language():
         
         Arguments:
             name        -- language name (str)
-            cats        -- grapheme categories (str, list or dict)
+            cats        -- grapheme categories (str, dict)
             wordConfig  -- word configuration data (str, Config)
             rootConfig  -- root configuration data (str, Config)
             patternFreq -- drop-off frequency for patterns (str, float)
@@ -64,16 +67,10 @@ class Language():
         
         Raises TypeError on invalid argument types.
         """
-        if isinstance(name, str):
-            self.name = name
-        else:
-            raise TypeError("argument 'name' requires str")
+        self.name = name
+        self.cats = {}
         if isinstance(cats, str):
             cats = cats.replace('|',' ').split()
-        elif cats is None:
-            cats = {}
-        if isinstance(cats, list):
-            self.cats = {}
             for cat in cats:
                 name, vals = cat.split('=')
                 vals = vals.replace(',',' ').split()
@@ -84,21 +81,7 @@ class Language():
                         vals[i] = self.cats[vals[i][1:-1]]
                 self.cats[name] = Cat(vals)
         elif isinstance(cats, dict):
-            for name in cats.keys():
-                if not isinstance(cats[name], Cat):
-                    if isinstance(cats[name], str):
-                        cats[name] = cats[name].replace(',',' ').split()
-                    if not vals: #this would yeild an empty cat
-                        continue
-                    for i in range(len(vals)):
-                        if '[' in vals[i]: #this is another category
-                            vals[i] = self.cats[vals[i][1:-1]]
-                    self.cats[name] = vals
-                if not cats[cat]: #this cat is empty
-                    del cats[cat]
             self.cats = cats
-        else:
-            raise TypeError("argument 'cats' requires str, list or dict")
         if 'graphs' not in self.cats:
             self.cats['graphs'] = Cat("'")
         for cat in self.cats.keys(): #discard blank categories
@@ -109,9 +92,9 @@ class Language():
         elif isinstance(wordConfig, Config):
             patterns, constraints = wordConfig.patterns, wordConfig.constraints
             if isinstance(patterns, str):
-                patterns = self.parsePatterns(wordConfig.patterns)
+                patterns = self.parse_patterns(wordConfig.patterns)
             if isinstance(constraints, str):
-                constraints = self.parsePatterns(wordConfig.constraints)
+                constraints = self.parse_patterns(wordConfig.constraints)
             self.wordConfig = Config(patterns, wordConfig.counts, contraints, wordConfig.freq, wordConfig.monofreq)
         elif wordConfig is None:
             self.wordConfig = Config([],range(0),[],0,0)
@@ -122,67 +105,46 @@ class Language():
         elif isinstance(rootConfig, Config):
             patterns, constraints = rootConfig.patterns, rootConfig.constraints
             if isinstance(patterns, str):
-                patterns = self.parsePatterns(rootConfig.patterns)
+                patterns = self.parse_patterns(rootConfig.patterns)
             if isinstance(constraints, str):
-                constraints = self.parsePatterns(rootConfig.constraints)
+                constraints = self.parse_patterns(rootConfig.constraints)
             self.rootConfig = Config(patterns, rootConfig.counts, constraints, rootConfig.freq, rootConfig.monofreq)
         elif rootConfig is None:
             self.rootConfig = Config([],range(0),[],0,0)
         else:
             raise TypeError("argument 'rootConfig' requires Config")
-        if isinstance(patternFreq, float):
-            self.patternFreq = patternFreq
-        elif isinstance(patternFreq, str):
-            self.patternFreq = float(patternFreq)
-        else:
-            raise TypeError("argument 'patternFreq' requires str or float")
-        if isinstance(graphFreq, float):
-            self.graphFreq = graphFreq
-        elif isinstance(graphFreq, str):
-            self.graphFreq = float(graphFreq)
-        else:
-            raise TypeError("argument 'graphFreq' requires str or float")
+        self.patternFreq = float(patternFreq)
+        self.graphFreq = float(graphFreq)
     
-    def parsePatterns(self, patterns):
+    def parse_patterns(self, patterns):
         """Parses generation patterns.
         
         Arguments:
-            patterns -- set of patterns to parse (str or list)
+            patterns -- set of patterns to parse (str)
         
         Returns a list
-        
-        Raises TypeError on invalid argument types"""
-        if isinstance(patterns, str):
-            patterns = patterns.replace(",", " ").split()
-        if isinstance(patterns, list):
-            for i in range(len(patterns)):
-                if isinstance(patterns[i], str):
-                    patterns[i] = parseSyms(patterns[i], self.cats)
-        else:
-            raise TypeError("requires str or list")
+        """
+        patterns = patterns.replace(",", " ").split()
+        for i in range(len(patterns)):
+            patterns[i] = parse_syms(patterns[i], self.cats)
         return patterns
     
-    def genWord(self, num):
+    def gen_word(self, num):
         """Generates 'num' words.
         
         Arguments:
             num -- number of words to generate, 0 generates every possible word (int)
         
         Returns a list
-        
-        Raises TypeError on invalid argument types
         """
         if num == 0: #generate every possible word, unimplemented
-            pass
-        elif isinstance(num, int):
-            results = []
-            for i in range(num):
-                results.append(gen.genWord(self))
-            return results
-        else:
-            raise TypeError("requires int")
+            return []
+        results = []
+        for i in range(num):
+            results.append(gen.gen_word(self))
+        return results
     
-    def genRoot(self, num):
+    def gen_root(self, num):
         """Generates 'num' roots.
         
         Arguments:
@@ -193,17 +155,14 @@ class Language():
         Raises TypeError on invalid argument types
         """
         if num == 0: #generate every possible word, unimplemented
-            pass
-        elif isinstance(num, int):
-            results = []
-            for i in range(num):
-                results.append(gen.genRoot(self))
-            return results
-        else:
-            raise TypeError("requires int")
+            return []
+        results = []
+        for i in range(num):
+            results.append(gen.gen_root(self))
+        return results
     
     @staticmethod
-    def applyRules(words, ruleset):
+    def apply_rules(words, ruleset):
         """Applies a set of sound change rules to a set of words.
         
         Arguments:
@@ -212,7 +171,7 @@ class Language():
         
         Returns a list.
         """
-        ruleset = sce.parseRuleset(ruleset)
+        ruleset = sce.parse_ruleset(ruleset)
         rules = [] #we use a list to store rules, since they may be applied multiple times
         for rule in ruleset:
             rules.append(rule)
@@ -222,7 +181,7 @@ class Language():
                     print("rule =",rule) #for debugging
                     for j in range(rule.flag["repeat"]):
                         try:
-                            words[i] = sce.applyRule(words[i], rule)
+                            words[i] = sce.apply_rule(words[i], rule)
                         except WordUnchanged: #if the word didn't change, stop applying
                             break
             for i in reversed(range(len(rules))):
