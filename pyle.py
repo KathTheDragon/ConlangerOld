@@ -20,21 +20,9 @@ Raise Exceptions where necessary (done?)
 
 """
 
-from core import Cat, Config
+from core import Cat, Config, parse_syms
 import gen
 import sce
-
-# Naswiyan
-# cats = 'T=t,d,þ,n|C=c,z,s|Č=č,ž,š|Ć=ć,ź,ś|K=k,g,h,ŋ|Q=q,ġ,ḫ|G=ʔ,ḥ|D=d,z,ž,ź,g,ġ|N=m,n,ŋ|R=r,l|A=n,þ,w,ḥ,r,ŋ,h,y,m,š,t,ś,ʔ,s,d,k,ḫ,č,l,g,ć,ž,c,ź,q,z,ġ|V=a,i,u,ə,e,o'
-# sylPatterns = ''
-# wordConstraints = ''
-# rootPatterns = '[A]'
-# rootConstraints = '[T][T],[C][C],[Č|Ć][Č|Ć],[Ć|K|Q][Ć|K|Q],[Q|G][Q|G],[D][D],[N][N],[R][R],y.y,w.w'
-# wordConfig = None
-# rootConfig = Config(rootPatterns, range(2,6), rootConstraints, 0.5, 0.3)
-# patternFreq = 0.6
-# graphFreq = 0.125
-# lang = Language('Naswiyan', cats, wordConfig, rootConfig, patternFreq, graphFreq)
 
 class Language():
     """Class for representing a single language.
@@ -68,53 +56,36 @@ class Language():
         Raises TypeError on invalid argument types.
         """
         self.name = name
-        self.cats = {}
-        if isinstance(cats, str):
-            cats = cats.replace('|',' ').split()
-            for cat in cats:
-                name, vals = cat.split('=')
-                vals = vals.replace(',',' ').split()
-                if not vals: #this would yeild an empty cat
-                    continue
-                for i in range(len(vals)):
-                    if '[' in vals[i]: #this is another category
-                        vals[i] = self.cats[vals[i][1:-1]]
-                self.cats[name] = Cat(vals)
-        elif isinstance(cats, dict):
+        if cats is None:
+            self.cats = {}
+        else:
             self.cats = cats
-        if 'graphs' not in self.cats:
-            self.cats['graphs'] = Cat("'")
-        for cat in self.cats.keys(): #discard blank categories
-            if not self.cats[cat]:
-                del self.cats[cat]
-        if isinstance(wordConfig, str):
-            wordConfig = eval(wordConfig) #improve
-        elif isinstance(wordConfig, Config):
-            patterns, constraints = wordConfig.patterns, wordConfig.constraints
-            if isinstance(patterns, str):
-                patterns = self.parse_patterns(wordConfig.patterns)
-            if isinstance(constraints, str):
-                constraints = self.parse_patterns(wordConfig.constraints)
-            self.wordConfig = Config(patterns, wordConfig.counts, contraints, wordConfig.freq, wordConfig.monofreq)
-        elif wordConfig is None:
+        #need to keep this but not sure where exactly it's being moved to
+        # cats = cats.replace('|',' ').split()
+        # for cat in cats:
+            # name, vals = cat.split('=')
+            # vals = vals.replace(',',' ').split()
+            # if not vals: #this would yeild an empty cat
+                # continue
+            # for i in range(len(vals)):
+                # if '[' in vals[i]: #this is another category
+                    # vals[i] = self.cats[vals[i][1:-1]]
+            # self.cats[name] = Cat(vals)
+        # if 'graphs' not in self.cats or not self.cats['graphs']: #category 'graphs' must exist and contain at least one character
+            # self.cats['graphs'] = Cat("'")
+        # for cat in self.cats.keys(): #discard blank categories
+            # if not self.cats[cat]:
+                # del self.cats[cat]
+        if wordConfig is None:
             self.wordConfig = Config([],range(0),[],0,0)
         else:
-            raise TypeError("argument 'wordConfig' requires Config")
-        if isinstance(rootConfig, str):
-            rootConfig = eval(rootConfig) #improve
-        elif isinstance(rootConfig, Config):
-            patterns, constraints = rootConfig.patterns, rootConfig.constraints
-            if isinstance(patterns, str):
-                patterns = self.parse_patterns(rootConfig.patterns)
-            if isinstance(constraints, str):
-                constraints = self.parse_patterns(rootConfig.constraints)
-            self.rootConfig = Config(patterns, rootConfig.counts, constraints, rootConfig.freq, rootConfig.monofreq)
-        elif rootConfig is None:
+            self.wordConfig = wordConfig
+        if rootConfig is None:
             self.rootConfig = Config([],range(0),[],0,0)
         else:
-            raise TypeError("argument 'rootConfig' requires Config")
-        self.patternFreq = float(patternFreq)
-        self.graphFreq = float(graphFreq)
+            self.rootConfig = rootConfig
+        self.patternFreq = patternFreq
+        self.graphFreq = graphFreq
     
     def parse_patterns(self, patterns):
         """Parses generation patterns.
@@ -190,17 +161,25 @@ class Language():
                     del rules[i]
         return words
 
-def loadLang(name): #do something with the path
-    with open('langs/{}.dat'.format(name), 'r') as f:
+def loadLang(name):
+    with open('langs/{}.dat'.format(name.lower()), 'r', encoding='utf-8') as f:
         data = list(f)
-    name = data[0]
-    cats = data[1]
-    wordConfig = data[2]
-    rootConfig = data[3]
-    patternFreq = data[4]
-    graphFreq = data[5]
+    name = data[0].strip()
+    cats = eval(data[1].strip())
+    wordConfig = eval(data[2].strip())
+    rootConfig = eval(data[3].strip())
+    patternFreq = eval(data[4].strip())
+    graphFreq = eval(data[5].strip())
     return Language(name, cats, wordConfig, rootConfig, patternFreq, graphFreq)
 
-def saveLang(lang, filename):
-    pass
+def saveLang(lang):
+    name = lang.name
+    cats = str(lang.cats)
+    wordConfig = str(lang.wordConfig)
+    rootConfig = str(lang.rootConfig)
+    patternFreq = str(lang.patternFreq)
+    graphFreq = str(lang.graphFreq)
+    data = '\n'.join([name, cats, wordConfig, rootConfig, patternFreq, graphFreq])
+    with open('langs/{}.dat'.format(name.lower()), 'w', encoding='utf-8') as f:
+        f.write(data)
 

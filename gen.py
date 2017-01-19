@@ -16,6 +16,7 @@ Doesn't seem to be checking exceptions correctly (not urgent-urgent)
 
 === Implementation ===
 Might be worth having gen_word() create the Word() at the beginning rather than the end
+Look into utilising decomposition theorem in syllable generation
 
 === Features ===
 
