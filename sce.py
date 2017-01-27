@@ -14,7 +14,6 @@ Functions:
 === Bug-fixes ===
 
 === Implementation ===
-Integrate core.Language
 Check that tar still matches immediately before replacement (difficult)
 Check if a rule is able to run infinitely and raise an exception if it can
 - (tar in rep and rule["repeat"] < 1)
@@ -29,7 +28,7 @@ Implement " for copying previous segment
 
 === Style ===
 Write docstrings
-Raise Exceptions where necessary
+Consider where to raise/handle exceptions
 """
 
 from core import LangException, Cat, parse_syms

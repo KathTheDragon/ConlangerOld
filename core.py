@@ -26,7 +26,7 @@ Implement cat subsets
 
 === Style ===
 Write docstrings
-Raise Exceptions where necessary
+Consider where to raise/handle exceptions
 """
 
 from collections import namedtuple

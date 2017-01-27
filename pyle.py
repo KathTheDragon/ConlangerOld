@@ -2,22 +2,22 @@
 
 Classes:
     Language -- represents a language
+
+Functions:
+    load_lang -- load the data from the named language file
+    save_lang -- save the given language's data to file
 """"""
 ==================================== To-do ====================================
 === Bug-fixes ===
 
 === Implementation ===
-Trim down Language.__init__()
-Cut back on excessive type-checking
-Improve handling of wordConfig and rootConfig in Language.__init__()
+Work out where the cat parsing code is going
 
 === Features ===
-Add saving/loading Languages to/from file
 Add generating every possible word/root
 
 === Style ===
-Raise Exceptions where necessary (done?)
-
+Consider where to raise/handle exceptions
 """
 
 from core import Cat, Config, parse_syms
@@ -47,11 +47,11 @@ class Language():
         
         Arguments:
             name        -- language name (str)
-            cats        -- grapheme categories (str, dict)
-            wordConfig  -- word configuration data (str, Config)
-            rootConfig  -- root configuration data (str, Config)
-            patternFreq -- drop-off frequency for patterns (str, float)
-            graphFreq   -- drop-off frequency for graphemes (str, float)
+            cats        -- grapheme categories (dict)
+            wordConfig  -- word configuration data (Config)
+            rootConfig  -- root configuration data (Config)
+            patternFreq -- drop-off frequency for patterns (float)
+            graphFreq   -- drop-off frequency for graphemes (float)
         
         Raises TypeError on invalid argument types.
         """
@@ -161,7 +161,7 @@ class Language():
                     del rules[i]
         return words
 
-def loadLang(name):
+def load_lang(name):
     with open('langs/{}.dat'.format(name.lower()), 'r', encoding='utf-8') as f:
         data = list(f)
     name = data[0].strip()
@@ -172,7 +172,7 @@ def loadLang(name):
     graphFreq = eval(data[5].strip())
     return Language(name, cats, wordConfig, rootConfig, patternFreq, graphFreq)
 
-def saveLang(lang):
+def save_lang(lang):
     name = lang.name
     cats = str(lang.cats)
     wordConfig = str(lang.wordConfig)
