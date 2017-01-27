@@ -150,14 +150,14 @@ class Language():
             for i in range(len(words)):
                 for rule in reversed(rules):
                     print("rule =",rule) #for debugging
-                    for j in range(rule.flag["repeat"]):
+                    for j in range(rule.flags["repeat"]):
                         try:
                             words[i] = sce.apply_rule(words[i], rule)
                         except WordUnchanged: #if the word didn't change, stop applying
                             break
             for i in reversed(range(len(rules))):
-                rules[i].flag["age"] -= 1
-                if rules[i].flag["age"] == 0: #if the rule has 'expired', discard it
+                rules[i].flags["age"] -= 1
+                if rules[i].flags["age"] == 0: #if the rule has 'expired', discard it
                     del rules[i]
         return words
 

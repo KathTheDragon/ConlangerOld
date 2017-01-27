@@ -40,18 +40,16 @@ class Rule():
     """Class for representing a sound change rule.
     
     Instance variables:
-        rule -- the rule as a string (str)
-        tars -- target segments (list)
-        reps -- replacement segments (list)
-        envs -- application environments (list)
-        excs -- exception environments (list)
-        flag -- flags for altering execution (dict)
+        rule  -- the rule as a string (str)
+        tars  -- target segments (list)
+        reps  -- replacement segments (list)
+        envs  -- application environments (list)
+        excs  -- exception environments (list)
+        flags -- flags for altering execution (dict)
     
     Methods:
-        parse_tars -- parse the target field of a rule
-        parse_reps -- parse the replacement field of a rule
-        parse_envs -- parse the environment field of a rule
-        parse_flag -- parse the flags of a rule
+        parse_field -- parse the fields of a rule
+        parse_flags -- parse the flags of a rule
     """  
     def __init__(self, rule, cats): #format is tars>reps/envs!excs flag; envs, excs, and flag are all optional
         """
@@ -60,42 +58,25 @@ class Rule():
             
         """
         self.rule = rule
-        if " " in rule:
-            rule, flag = rule.split(" ")
-        else:
-            flag = ""
-        if "!" in rule:
-            rule, excs = rule.split("!")
-        else:
-            excs = ""
-        if "/" in rule:
-            rule, envs = rule.split("/")
-        else:
-            envs = "_"
-        if rule.count("+") + rule.count("-") + rule.count(">") != 1:
-            raise FormatError("there must be exactly one of '+', '-' and '>' in the rule")
-        if "+" in rule: #+reps/... is alias for >reps/...
-            if rule[0] != "+":
-                raise FormatError("'+' must be at the beginning of the rule")
-            else:
-                tars, reps = "", rule[1:]
-        if "-" in rule: #-tars/... is alias for tars>/...
-            if rule[0] != "-":
-                raise FormatError("'-' must be at the beginning of the rule")
-            else:
-                tars, reps = rule[1:], ""
-        elif ">" in rule:
-            tars, reps = rule.split(">")
-            if not tars and not reps:
-                raise FormatError("tars and reps may not both be empty")
-            if "," in tars and "," not in reps:
-                reps = ",".join([reps]*(tars.count(",")+1))
-        self.tars = Rule.parse_tars(tars, cats)
-        self.reps = Rule.parse_reps(reps, cats)
-        self.envs = Rule.parse_envs(envs, cats)
-        self.excs = Rule.parse_envs(excs, cats)
-        self.flag = Rule.parse_flag(flag)
-        if self.flag["ltr"]:
+        if ' ' not in rule:
+            rule.append(' ')
+        if '!' not in rule:
+            rule.replace(' ', '! ')
+        if '/' not in rule:
+            rule.replace('!', '/_!')
+        if '+' in rule:
+            rule.replace('+', '>')
+        if '-' in rule:
+            rule.replace('-', '').replace('/', '>/')
+        tars, reps, envs, excs, flags = rule.replace('>', ' ').replace('/', ' ').replace('!', ' ').split(' ')
+        if "," in tars and "," not in reps:
+            reps = ",".join([reps]*(tars.count(",")+1))
+        self.tars = Rule.parse_field(tars, 'tars', cats)
+        self.reps = Rule.parse_field(reps, 'reps', cats)
+        self.envs = Rule.parse_field(envs, 'envs', cats)
+        self.excs = Rule.parse_field(excs, 'envs', cats)
+        self.flags = Rule.parse_flags(flags)
+        if self.flags["ltr"]:
             self.reverse()
         return
     
@@ -106,69 +87,40 @@ class Rule():
         return self.rule
     
     @staticmethod
-    def parse_tars(tars, cats):
+    def parse_field(field, mode, cats):
         """
         
         Arguments:
-            
-        """
-        _tars = []
-        for tar in tars.replace(",", " ").split():
-            if "@" in tar:
-                try:
-                    tar, count = tar.replace("@", " ").split()
-                except ValueError:
-                    raise FormatError("there should only be one '@' per target")
-                count = count.replace("|", " ").split()
-            else:
-                count = []
-            tar = parse_syms(tar, cats)
-            _tars += [(tar,count)]
-        return _tars
-
-    @staticmethod
-    def parse_reps(reps, cats):
-        """
         
-        Arguments:
-            
         """
-        _reps = []
-        for rep in reps.replace(",", " ").split():
-            if "(" in rep or ")" in rep:
-                raise FormatError("optional segments not allowed in rep")
-            rep = parse_syms(rep, cats)
-            _reps += [rep]
-        return _reps
-
-    @staticmethod
-    def parse_envs(envs, cats):
-        """
-        
-        Arguments:
-            
-        """
-        _envs = []
-        for env in envs.replace(",", " ").split():
-            if "~" in env: #~X is equivalent to X_,_X; add checks for bad formatting
-                _envs += Rule.parse_envs(env[1:]+"_,_"+env[1:], cats)
-            else:
-                if env.count("_") > 1:
-                    raise FormatError("there should be no more than one '_' per env")
-                env = parse_syms(env, cats)
-                if "_" in env:
-                    index = env.index("_")
-                    if index == 0:
-                        env = [[], env[1:]]
-                    else:
-                        env = [env[index-1::-1], env[index+1:]]
+        _field = []
+        if mode == 'envs':
+            for env in field.split(','):
+                if "~" in env: #~X is equivalent to X_,_X
+                    _field += Rule.parse_field(env[1:]+'_,_'+env[1:], 'envs', cats)
                 else:
-                    env = [env]
-                _envs.append(env)
-        return _envs
+                    if '_' in env:
+                        env = env.split('_')
+                        env = [parse_syms(env[0], cats)[::-1], parse_syms(env[1], cats)]
+                    else:
+                        env = [parse_syms(env, cats)]
+                    _field.append(env)
+        else:
+            for tar in field.split(','):
+                if mode == 'tars':
+                    if '@' in tar:
+                        tar, count = tar.split('@')
+                        count = count.split('|')
+                    else:
+                        count = []
+                tar = parse_syms(tar, cats)
+                if mode == 'tars':
+                    tar = (tar, count)
+                _field.append(tar)
+        return _field
     
     @staticmethod
-    def parse_flag(flags):
+    def parse_flags(flags):
         """
         
         Arguments:
@@ -176,13 +128,8 @@ class Rule():
         """
         _flags = {"ltr":0, "repeat":1, "age":1} #default values
         for flag in flags.replace(",", " ").split():
-            if flag not in _flags:
-                raise FormatError("'{}' is not a valid flag".format(flag))
             if ":" in flag:
-                try:
-                    flag, arg = flag.split(":")
-                except ValueError:
-                    raise FormatError("each flag may only be followed by one ':'")
+                flag, arg = flag.split(":")
                 _flags[flag] = arg
             else:
                 _flags[flag] = 1-_flags[flag]
@@ -262,7 +209,7 @@ def apply_rule(word, rule):
     """
     tars, reps = rule.tars, rule.reps
     phones = word.phones
-    if rule.flag["ltr"]:
+    if rule.flags["ltr"]:
         word.reverse()
     if not tars: #Epenthesis
         word.substitute(rule, ([],[]), reps[0])
@@ -282,7 +229,7 @@ def apply_rule(word, rule):
                 if rep == ["?"]: #Metathesis
                     rep = tar[0][::-1]
                 word.substitute(rule, tar, rep)
-    if rule.flag["ltr"]:
+    if rule.flags["ltr"]:
         word.reverse()
     if word.phones == phones:
         raise WordUnchanged
