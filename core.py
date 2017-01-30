@@ -20,6 +20,7 @@ Word.find is not aware that optional segments are now in tuples (not urgent)
 Utilise new implementation of Word as sequence type
 - investigate reindexing Word
 Break out format checking into separate functions
+I want to change supplying the actual syllable boundaries to Word to giving a syllabifier function - this is obviously language-dependent
 
 === Features ===
 Implement cat subsets
