@@ -8,7 +8,7 @@ Classes:
 
 Functions:
     parse_ruleset -- parses a sound change ruleset
-    apply_rule    -- applies a sound change rule to a word
+    apply_ruleset -- applies a set of sound change rules to a set of words
 """"""
 ==================================== To-do ====================================
 === Bug-fixes ===
@@ -33,9 +33,11 @@ Consider where to raise/handle exceptions
 
 from core import LangException, Cat, parse_syms
 
+#== Exceptions ==#
 class WordUnchanged(LangException):
     """Used to indicate that the word was not changed by the rule."""
 
+#== Classes ==#
 class Rule():
     """Class for representing a sound change rule.
     
@@ -50,6 +52,7 @@ class Rule():
     Methods:
         parse_field -- parse the fields of a rule
         parse_flags -- parse the flags of a rule
+        apply       -- apply the rule to a word 
     """  
     def __init__(self, rule, cats): #format is tars>reps/envs!excs flag; envs, excs, and flag are all optional
         """
@@ -150,7 +153,47 @@ class Rule():
             exc[0].reverse()
             if len(exc) == 2:
                 exc[1].reverse()
+    
+    def apply(self, word):
+        """Apply a single sound change rule to a single word.
+        
+        Arguments:
+            word -- the word to which the rule is to be applied (Word)
+        
+        Returns a Word
+        
+        Raises WordUnchanged if the word was not changed by the rule.
+        """
+        tars, reps = self.tars, self.reps
+        phones = word.phones
+        if self.flags["ltr"]:
+            word.reverse()
+        if not tars: #Epenthesis
+            word.substitute(self, ([],[]), reps[0])
+        elif not reps: #Deletion
+            for tar in tars:
+                word.substitute(self, tar, [])
+        else: #Substitution
+            for tar, rep in zip(tars, reps):
+                if isinstance(rep[0], Cat) and isinstance(tar[0][0], Cat): #Cat substitution
+                    matches = word.match_tar(tar, self)
+                    tar, rep = tar[0][0], rep[0]
+                    for match in matches:
+                        index = tar.find(word[match])
+                        _rep = [rep[index]]
+                        word.replace(match, 1, _rep)
+                else:
+                    if rep == ["?"]: #Metathesis
+                        rep = tar[0][::-1]
+                    word.substitute(self, tar, rep)
+        if self.flags["ltr"]:
+            word.reverse()
+        if word.phones == phones:
+            raise WordUnchanged
+        return word
 
+
+#== Functions ==#
 def parse_ruleset(ruleset, cats):
     """Parse a sound change ruleset.
     
@@ -195,43 +238,32 @@ def parse_ruleset(ruleset, cats):
         if ruleset[i] is None:
             del ruleset[i]
     return ruleset
-    
-def apply_rule(word, rule):
-    """Apply a single sound change rule to a single word.
+
+def apply_ruleset(words, ruleset):
+    """Applies a set of sound change rules to a set of words.
     
     Arguments:
-        word -- the word to which the rule is to be applied (Word)
-        rule -- the rule to be applied to the word (Rule)
+        words   -- the words to which the rules are to be applied (list)
+        ruleset -- the rules which are to be applied to the words (list)
     
-    Returns a Word
-    
-    Raises WordUnchanged if the word was not changed by the rule.
+    Returns a list.
     """
-    tars, reps = rule.tars, rule.reps
-    phones = word.phones
-    if rule.flags["ltr"]:
-        word.reverse()
-    if not tars: #Epenthesis
-        word.substitute(rule, ([],[]), reps[0])
-    elif not reps: #Deletion
-        for tar in tars:
-            word.substitute(rule, tar, [])
-    else: #Substitution
-        for tar, rep in zip(tars, reps):
-            if isinstance(rep[0], Cat) and isinstance(tar[0][0], Cat): #Cat substitution
-                matches = word.match_tar(tar, rule)
-                tar, rep = tar[0][0], rep[0]
-                for match in matches:
-                    index = tar.find(word[match])
-                    _rep = [rep[index]]
-                    word.replace(match, 1, _rep)
-            else:
-                if rep == ["?"]: #Metathesis
-                    rep = tar[0][::-1]
-                word.substitute(rule, tar, rep)
-    if rule.flags["ltr"]:
-        word.reverse()
-    if word.phones == phones:
-        raise WordUnchanged
-    return word
+    ruleset = parse_ruleset(ruleset)
+    rules = [] #we use a list to store rules, since they may be applied multiple times
+    for rule in ruleset:
+        rules.append(rule)
+        print("Words =",[str(word) for word in words]) #for debugging
+        for i in range(len(words)):
+            for rule in reversed(rules):
+                print("rule =",rule) #for debugging
+                for j in range(rule.flags["repeat"]):
+                    try:
+                        words[i] = rule.apply(words[i])
+                    except WordUnchanged: #if the word didn't change, stop applying
+                        break
+        for i in reversed(range(len(rules))):
+            rules[i].flags["age"] -= 1
+            if rules[i].flags["age"] == 0: #if the rule has 'expired', discard it
+                del rules[i]
+    return words
 

@@ -114,11 +114,9 @@ class Word():
             
         """
         if graphs is None:
-            self.sep = "'"
-            self.graphs = []
-        else:
-            self.sep = graphs[0]
-            self.graphs = graphs[1:]
+            graphs = ["'"]
+        self.sep = graphs[0]
+        self.polygraphs = [g for g in graphs if len(g)>1]
         if lexeme is None:
             self.phones = []
         elif isinstance(lexeme, str): #black magic
@@ -126,18 +124,18 @@ class Word():
             phones = []
             for char in "#"+lexeme.replace(" ","#")+"#"+self.sep: #flank the word with '#' to indicate the edges
                 test += char
-                while len(test) > 1 and all(g.find(test) for g in self.graphs):
-                    for i in reversed(range(1,len(test)+1)):
-                        if len(test[:i]) == 1 or test[:i] in self.graphs:
+                while len(test) > 1 and not(any(g.startswith(test) for g in self.polygraphs)): #test isn't a single character and doesn't begin any polygraph
+                    for i in reversed(range(1,len(test)+1)): #from i=len(test) to i=1
+                        if i == 1 or test[:i] in self.polygraphs: #does test begin with a valid graph? Single characters are always valid
                             phones += [test[:i]]
                             test = test[i:].lstrip(self.sep)
                             break
             self.phones = phones
         else:
-            for i in reversed(range(1,len(lexeme))): #clean up multiple consecutive '#'s
-                if lexeme[i] == lexeme[i-1] == "#":
-                    del lexeme[i]
             self.phones = list(lexeme)
+        for i in reversed(range(1,len(self.phones))): #clean up multiple consecutive '#'s
+            if self.phones[i] == self.phones[i-1] == "#":
+                del self.phones[i]
         self.syllables = syllables #do a bit of sanity checking here
     
     def __repr__(self):
@@ -147,12 +145,12 @@ class Word():
         word = curr = ""
         for graph in self.phones:
             curr += graph
-            for poly in [g for g in self.graphs if len(g) > 1]:
+            for poly in self.polygraphs:
                 if graph in poly and graph != poly:
                     break
             else:
                 curr = ""
-            for poly in [g for g in self.graphs if len(g) > 1]:
+            for poly in self.polygraphs:
                 if curr in poly:
                     if curr == poly:
                         word += self.sep

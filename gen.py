@@ -42,11 +42,14 @@ from core import LangException, Cat, Word
 from random import random, choice
 from math import log, floor, ceil
 
+#== Constants ==#
 MAX_RUNS = 10**5 #maximum number of times something can fail to be generated
 
+#== Exceptions ==#
 class ExceededMaxRunsError(LangException):
     """Exception raised when something has failed to be generated too many times."""
 
+#== Functions ==#
 def dist(bins, a=0, x=None): #first bin has frequency a, random variable x
     """Returns an element of 'bins' according to a power law distribution.
     
@@ -198,5 +201,5 @@ def gen_root(lang):
                 break
         else:
             raise ExceededMaxRunsError()
-    return Word(root, lang.cats['graphs'])
+    return Word(root, None, lang.cats['graphs'])
 

@@ -24,6 +24,7 @@ from core import Cat, Config, parse_syms
 import gen
 import sce
 
+#== Classes ==#
 class Language():
     """Class for representing a single language.
     
@@ -39,7 +40,6 @@ class Language():
         parse_patterns -- parse a string denoting generation patterns
         gen_word       -- generate words
         gen_root       -- generate roots
-        apply_rules    -- apply sound changes
     """
     
     def __init__(self, name='', cats=None, wordConfig=None, rootConfig=None, patternFreq=0, graphFreq=0):
@@ -131,36 +131,8 @@ class Language():
         for i in range(num):
             results.append(gen.gen_root(self))
         return results
-    
-    @staticmethod
-    def apply_rules(words, ruleset):
-        """Applies a set of sound change rules to a set of words.
-        
-        Arguments:
-            words   -- the words to which the rules are to be applied (list)
-            ruleset -- the rules which are to be applied to the words (list)
-        
-        Returns a list.
-        """
-        ruleset = sce.parse_ruleset(ruleset)
-        rules = [] #we use a list to store rules, since they may be applied multiple times
-        for rule in ruleset:
-            rules.append(rule)
-            print("Words =",[str(word) for word in words]) #for debugging
-            for i in range(len(words)):
-                for rule in reversed(rules):
-                    print("rule =",rule) #for debugging
-                    for j in range(rule.flags["repeat"]):
-                        try:
-                            words[i] = sce.apply_rule(words[i], rule)
-                        except WordUnchanged: #if the word didn't change, stop applying
-                            break
-            for i in reversed(range(len(rules))):
-                rules[i].flags["age"] -= 1
-                if rules[i].flags["age"] == 0: #if the rule has 'expired', discard it
-                    del rules[i]
-        return words
 
+#== Functions ==#
 def load_lang(name):
     with open('langs/{}.dat'.format(name.lower()), 'r', encoding='utf-8') as f:
         data = list(f)
