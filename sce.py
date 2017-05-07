@@ -29,6 +29,7 @@ Implement % for target reference
 Implement " for copying previous segment
 Implement flag 'chance' for non-deterministic rule application
 Implement additional logic options for environments
+Implement flag 'stop' to terminate execution if the rule succeeds
 
 === Style ===
 Write docstrings
@@ -132,9 +133,9 @@ class Rule():
         """
         _field = []
         if mode == 'envs':
-            for env in field.split(','):
+            for env in field.split('|'):
                 if "~" in env: #~X is equivalent to X_,_X
-                    _field += Rule.parse_field(env[1:]+'_,_'+env[1:], 'envs', cats)
+                    _field += Rule.parse_field(env[1:]+'_|_'+env[1:], 'envs', cats)
                 else:
                     if '_' in env:
                         env = env.split('_')
@@ -295,11 +296,7 @@ def parse_ruleset(ruleset, cats):
                     del cats[cat]
             ruleset[i] = None
         else: #rule is a sound change
-            try:
-                ruleset[i] = Rule(rule, cats)
-            except FormatError as e:
-                print("Error parsing rule '{}': {}. Skipping.".format(rule, e.args[0]))
-                ruleset[i] = None
+            ruleset[i] = Rule(rule, cats)
     for i in reversed(range(len(ruleset))):
         if ruleset[i] is None:
             del ruleset[i]

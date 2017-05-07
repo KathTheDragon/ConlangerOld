@@ -57,8 +57,6 @@ def dist(bins, a=0, x=None): #first bin has frequency a, random variable x
         bins -- a non-empty ordered collection of elements (str, list, tuple)
         a    -- the frequency that the first bin should be selected (0 for equiprobable distribution) (float)
         x    -- a random variable supplied if the default random.random() is not desired (float)
-    
-    Raises TypeError on invalid argument types.
     """
     #See the docstring titled "Mathematical Model" for the maths
     r = len(bins)

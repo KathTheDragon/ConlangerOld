@@ -21,12 +21,13 @@ Utilise new implementation of Word as sequence type
 - investigate reindexing Word
 Break out format checking into separate functions
 I want to change supplying the actual syllable boundaries to Word to giving a syllabifier function - this is obviously language-dependent
+Optimise Word.find
+Look into revising the parsing of nonce categories
 
 === Features ===
 Implement cat subsets
 
 === Style ===
-Write docstrings
 Consider where to raise/handle exceptions
 """
 
@@ -100,19 +101,25 @@ class Cat():
         return Cat(values)
 
 class Word():
-    """
+    """Represents a word as a list of graphemes.
     
     Instance variables:
-    
+        sep        -- a character used to disambiguate polygraphs from sequences (chr)
+        polygraphs -- a list of multi-letter graphemes (list)
+        phones     -- a list of the graphemes in the word (list)
+        syllables  -- a list of tuples representing syllables (list)
     
     Methods:
-    
+        find      -- match a list using sound change notation to the word
+        match_env -- match a sound change environment to the word
     """
     def __init__(self, lexeme=None, syllables=None, graphs=None):
-        """
+        """Constructor for Word
         
         Arguments:
-            
+            lexeme    -- the word (str)
+            syllables -- list of tuples representing syllables (list)
+            graphs    -- list of graphemes (list)
         """
         if graphs is None:
             graphs = ["'"]
@@ -207,10 +214,14 @@ class Word():
         self.phones.reverse()
     
     def find(self, sub, start=None, end=None):
-        """
+        """Match a list using sound change notation to the word.
         
         Arguments:
-            
+            sub   -- the list to be found (list)
+            start -- the index of the beginning of the range to check (int)
+            end   -- the index of the end of the range to check (int)
+        
+        Returns an int
         """
         if not (start is None and end is None):
             return self[start:end].find(sub)
@@ -241,10 +252,14 @@ class Word():
             return pos+1
     
     def match_env(self, env, pos=0, run=0): #test if the env matches the word at index pos
-        """
+        """Match a sound change environment to the word.
         
         Arguments:
-            
+            env -- the environment to be matched (list)
+            pos -- the index of the left edge of the target (int)
+            run -- the length of the target (int)
+        
+        Returns a bool
         """
         if len(env) == 1:
             return env[0] in self
@@ -264,12 +279,15 @@ Config = namedtuple('Config', 'patterns, counts, constraints, freq, monofreq')
 
 #== Functions ==#
 def parse_syms(syms, cats):
-    """
+    """Parse a string using sound change notation.
     
     Arguments:
-        
+        syms -- the input string (str)
+        cats -- a list of cats to use for interpreting categories (list)
+    
+    Returns a list
     """
-    for char in "()[]{}|#*_":
+    for char in "()[]{},#*_":
         syms = syms.replace(char, "."+char+".")
     syms = syms.replace(".", " ").split()
     ends = [] #store indices of close-brackets here
@@ -281,12 +299,12 @@ def parse_syms(syms, cats):
             syms[i:end+1] = tuple(syms[i+1:end])
         elif syms[i] == "[": #category - to list and then Cat
             end = ends.pop()
-            if "|" in syms[i+1:end]: #nonce category
+            if "," in syms[i+1:end]: #nonce category
                 temp = syms[i+1:end]
                 cat = []
-                while True: #the list is partitioned by "|"
-                    if "|" in temp:
-                        index = temp.index("|")
+                while True: #the list is partitioned by ","
+                    index = temp.find(',')
+                    if index != -1:
                         if index == 1:
                             seg = temp[0]
                             if seg in cats:

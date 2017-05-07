@@ -51,8 +51,6 @@ class Language():
             rootConfig  -- root configuration data (Config)
             patternFreq -- drop-off frequency for patterns (float)
             graphFreq   -- drop-off frequency for graphemes (float)
-        
-        Raises TypeError on invalid argument types.
         """
         self.name = name
         if cats is None:
@@ -121,8 +119,6 @@ class Language():
             num -- number of roots to generate, 0 generates every possible root (int)
         
         Returns a list
-        
-        Raises TypeError on invalid argument types
         """
         if num == 0: #generate every possible word, unimplemented
             return []
@@ -133,6 +129,13 @@ class Language():
 
 #== Functions ==#
 def load_lang(name):
+    """Loads language data from file.
+    
+    Arguments:
+        name -- the name of the language file to load from
+    
+    Returns a Language
+    """
     with open('langs/{}.dat'.format(name.lower()), 'r', encoding='utf-8') as f:
         data = list(f)
     name = data[0].strip()
@@ -144,6 +147,11 @@ def load_lang(name):
     return Language(name, cats, wordConfig, rootConfig, patternFreq, graphFreq)
 
 def save_lang(lang):
+    """Saves a language to file.
+    
+    Arguments:
+        lang -- the Language to save
+    """
     name = lang.name
     cats = str(lang.cats)
     wordConfig = str(lang.wordConfig)
