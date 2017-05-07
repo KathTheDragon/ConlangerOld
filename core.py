@@ -256,44 +256,6 @@ class Word():
             matchRight = self.find(env[1], pos+run)
             return matchLeft == matchRight == 0
     
-    def match_tar(self, tar, rule): #get all places where tar matches against self
-        """
-        
-        Arguments:
-            
-        """
-        matches = []
-        if tar:
-            tar, count = tar
-        else:
-            tar, count = [], []
-        index = 0
-        while True:
-            match = self.find(tar, index) #find the next place where tar matches
-            if match == -1: #no more matches
-                break
-            index += match
-            matches.append(index)
-            index += 1
-        if not count:
-            count = range(len(matches))
-        envs, excs = rule.envs, rule.excs
-        for match in sorted([matches[c] for c in count], reverse=True):
-            for exc in excs: #don't keep this match if any exception matches
-                if self.match_env(exc, match, len(tar)):
-                    break
-            else:
-                for env in envs: #keep this match if any environment matches
-                    if self.match_env(env, match, len(tar)):
-                        yield match
-                        break
-    
-    def substitute(self, rule, tar, rep):
-        matches = self.match_tar(tar, rule)
-        run = len(tar[0])
-        for match in matches:
-            self[match:match+run] = rep
-    
     def replace(self, start, run, rep):
         self[start:start+run] = rep
         return
@@ -307,9 +269,6 @@ def parse_syms(syms, cats):
     Arguments:
         
     """
-    for lbr, rbr in zip("([{",")]}"): #check for unbalanced brackets
-        if syms.count(lbr) != syms.count(rbr):
-            raise FormatError("unbalanced '{}{}'".format(lbr,rbr))
     for char in "()[]{}|#*_":
         syms = syms.replace(char, "."+char+".")
     syms = syms.replace(".", " ").split()
@@ -318,13 +277,9 @@ def parse_syms(syms, cats):
         if syms[i] in ")]}":
             ends.append(i)
         elif syms[i] == "(": #optional segment - to tuple
-            if syms[ends[-1]] != ")":
-                raise FormatError("cannot interleave bracket types")
             end = ends.pop()
             syms[i:end+1] = tuple(syms[i+1:end])
         elif syms[i] == "[": #category - to list and then Cat
-            if syms[ends[-1]] != "]":
-                raise FormatError("cannot interleave bracket types")
             end = ends.pop()
             if "|" in syms[i+1:end]: #nonce category
                 temp = syms[i+1:end]
@@ -353,11 +308,7 @@ def parse_syms(syms, cats):
                 syms[i:end+1] = [Cat(cat)]
             elif syms[i+1] in cats and end == i+2: #named category
                 syms[i:end+1] = [cats[syms[i+1]]]
-            else:
-                raise FormatError("mal-formatted category") # Improve message?
         elif syms[i] == "{": #subset - unimplemented, delete contents
-            if syms[ends[-1]] != "}":
-                raise FormatError("cannot interleave bracket types")
             end = ends.pop()
             del syms[i:end+1]
     return syms

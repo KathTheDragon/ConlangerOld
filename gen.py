@@ -62,16 +62,12 @@ def dist(bins, a=0, x=None): #first bin has frequency a, random variable x
     """
     #See the docstring titled "Mathematical Model" for the maths
     r = len(bins)
-    if r == 0:
-        raise ValueError("argument 'r' must not be empty")
     if a <= 0: #use equiprobable distribution instead
         return choice(bins)
     if r == 1 or a >= 1: #only one bin
         return bins[0]
     if x is None: #no random variable supplied
         x = random()
-    elif not isinstance(x, float):
-        raise TypeError("argument 'x' requires float")
     p = (1-a)+(a*(1-a)**r)/(1-a*r*(1-a)**(r-1))
     return bins[floor(log(1-x*(1-p**r),p))]
 
@@ -85,8 +81,6 @@ def peaked_dist(bins, a=0, m=0, c=0):
         c    -- the cumulative frequency of bins 0 to m-1
     """
     #See the docstring titled "Mathematical Model" for the maths
-    if c >= 1: #cri
-        raise ValueError("argument 'c' must be less than 1")
     if m <= 0 or c <= 0: #all bins before the mode are ignored
         return dist(bins[m:], a)
     x = random()

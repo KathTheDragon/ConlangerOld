@@ -17,14 +17,18 @@ Functions:
 Check that tar still matches immediately before replacement (difficult)
 Check if a rule is able to run infinitely and raise an exception if it can
 - (tar in rep and rule["repeat"] < 1)
+Implement new delimiter splitting (aware of nesting)
+- probably best to make a generator split() here
 Move compiling code to own functions
-Tidy up after moving Word() and Cat() to core.py
-Remove formatting checks - this will all be done in the interface script
+Update rule application to allow for application of the else rule.
+- else condition: if there's an exception, if it matches, otherwise if the condition doesn't match
 
 === Features ===
 Implement $ and syllables
 Implement % for target reference
 Implement " for copying previous segment
+Implement flag 'chance' for non-deterministic rule application
+Implement additional logic options for environments
 
 === Style ===
 Write docstrings
@@ -47,6 +51,7 @@ class Rule():
         reps  -- replacement segments (list)
         envs  -- application environments (list)
         excs  -- exception environments (list)
+        else_ -- the rule to apply if an exception is satisfied (Rule)
         flags -- flags for altering execution (dict)
     
     Methods:
@@ -55,31 +60,60 @@ class Rule():
         apply       -- apply the rule to a word 
     """  
     def __init__(self, rule, cats): #format is tars>reps/envs!excs flag; envs, excs, and flag are all optional
-        """
+        """Constructor for Rule
         
         Arguments:
-            
+            rule -- the rule as a string
+            cats -- list of categories used to interpret the rule 
         """
         self.rule = rule
-        if ' ' not in rule:
-            rule.append(' ')
-        if '!' not in rule:
-            rule.replace(' ', '! ')
-        if '/' not in rule:
-            rule.replace('!', '/_!')
+        if ' ' in rule:
+            rule, flags = rule.split()
+        else:
+            flags = ''
         if '+' in rule:
-            rule.replace('+', '>')
+            rule = rule.replace('+', '>')
         if '-' in rule:
-            rule.replace('-', '').replace('/', '>/')
-        tars, reps, envs, excs, flags = rule.replace('>', ' ').replace('/', ' ').replace('!', ' ').split(' ')
-        if "," in tars and "," not in reps:
-            reps = ",".join([reps]*(tars.count(",")+1))
+            rule = rule.replace('-', '')
+        rule = rule.replace('>', ' >').replace('/', ' /').replace('!', ' !').split(' ')
+        tars = rule.pop(0)
+        #We want to extract just the first iteration of (reps, envs, excs) and store everything else in else_
+        #To do this, we observe that if we fill in missing fields once we reach a later field, then if we hit
+        #a repeat (by seeing that the field variable is not None) we are in the second iteration. If there is
+        #no second iteration, else_ will be None.
+        reps = envs = excs = else_ = None
+        for i in range(len(rule)):
+            if rule[i][0] == '>' and reps is None:
+                reps = rule[i][1:]
+                continue
+            if rule[i][0] == '/' and envs is None:
+                envs = rule[i][1:]
+                if reps is None:
+                    reps = ''
+                continue
+            if rule[i][0] == '!' and excs is None:
+                excs = rule[i][1:]
+                if envs is None:
+                    envs = '_'
+                if reps is None:
+                    reps = ''
+                continue
+            else_ = rule[i:]
+            else_.insert(0,tars)
+        if envs is None:
+            envs = '_'
+        if excs is None:
+            excs = ''
         self.tars = Rule.parse_field(tars, 'tars', cats)
         self.reps = Rule.parse_field(reps, 'reps', cats)
         self.envs = Rule.parse_field(envs, 'envs', cats)
         self.excs = Rule.parse_field(excs, 'envs', cats)
         self.flags = Rule.parse_flags(flags)
-        if self.flags["ltr"]:
+        if else_ is not None:
+            self.else_ = Rule(''.join(else_), cats)
+        else:
+            self.else_ = None
+        if self.flags['ltr']:
             self.reverse()
         return
     
@@ -153,6 +187,8 @@ class Rule():
             exc[0].reverse()
             if len(exc) == 2:
                 exc[1].reverse()
+        if self.else_ is not None:
+            self.else_.reverse()
     
     def apply(self, word):
         """Apply a single sound change rule to a single word.
@@ -169,10 +205,10 @@ class Rule():
         if self.flags["ltr"]:
             word.reverse()
         if not tars: #Epenthesis
-            word.substitute(self, ([],[]), reps[0])
+            self.substitute(word, ([],[]), reps[0])
         elif not reps: #Deletion
             for tar in tars:
-                word.substitute(self, tar, [])
+                self.substitute(word, tar, [])
         else: #Substitution
             for tar, rep in zip(tars, reps):
                 if isinstance(rep[0], Cat) and isinstance(tar[0][0], Cat): #Cat substitution
@@ -185,13 +221,51 @@ class Rule():
                 else:
                     if rep == ["?"]: #Metathesis
                         rep = tar[0][::-1]
-                    word.substitute(self, tar, rep)
+                    self.substitute(word, tar, rep)
         if self.flags["ltr"]:
             word.reverse()
         if word.phones == phones:
             raise WordUnchanged
         return word
-
+    
+    def match_tar(self, tar, word): #get all places where tar matches against self
+        """
+        
+        Arguments:
+            
+        """
+        matches = []
+        if tar:
+            tar, count = tar
+        else:
+            tar, count = [], []
+        index = 0
+        while True:
+            match = self.find(tar, index) #find the next place where tar matches
+            if match == -1: #no more matches
+                break
+            index += match
+            matches.append(index)
+            index += 1
+        if not count:
+            count = range(len(matches))
+        envs, excs = rule.envs, rule.excs
+        for match in sorted([matches[c] for c in count], reverse=True):
+            for exc in excs: #don't keep this match if any exception matches
+                if self.match_env(exc, match, len(tar)):
+                    break
+            else:
+                for env in envs: #keep this match if any environment matches
+                    if self.match_env(env, match, len(tar)):
+                        yield match
+                        break
+    
+    #This is decidedly temporary, pending the rewrite of rule application
+    def substitute(self, word, tar, rep):
+        matches = self.match_tar(tar, word)
+        run = len(tar[0])
+        for match in matches:
+            word.replace(match, run, rep)
 
 #== Functions ==#
 def parse_ruleset(ruleset, cats):
@@ -212,22 +286,14 @@ def parse_ruleset(ruleset, cats):
         elif isinstance(rule, Rule):
             continue
         elif "=" in rule: #rule is a cat definition
-            try:
-                if rule.count("=") != 1: #tbr
-                    raise FormatError("there should only be one '='")
-                cop = rule.index("=")
-                op = (rule[cop-1] if rule[cop-1] in "+-" else "") + "="
-                name, vals = rule.split(op)
-                if op != "=" and name not in cats: #tbr
-                    raise FormatError("categories must exist to be modified")
-                exec("cats[name] {} Cat(vals)".format(op))
-                for cat in cats.keys(): #discard blank categories
-                    if not cats[cat]:
-                        del cats[cat]
-                ruleset[i] = None
-            except FormatError as e: #tbr
-                print("Error parsing cat '{}': {}. Skipping.".format(rule, e.args[0]))
-                ruleset[i] = None
+            cop = rule.index("=")
+            op = (rule[cop-1] if rule[cop-1] in "+-" else "") + "="
+            name, vals = rule.split(op)
+            exec("cats[name] {} Cat(vals)".format(op))
+            for cat in cats.keys(): #discard blank categories
+                if not cats[cat]:
+                    del cats[cat]
+            ruleset[i] = None
         else: #rule is a sound change
             try:
                 ruleset[i] = Rule(rule, cats)
