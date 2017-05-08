@@ -47,11 +47,12 @@ class Cat():
         values -- the values in the category (list)
     '''
     
-    def __init__(self, values):
+    def __init__(self, values, cats=None):
         '''Constructor for Cat.
         
         Arguments:
             values -- the values in the category (str, list)
+            cats   -- dictionary of categories (dict)
         '''
         _values = []
         if isinstance(values, str): #we want an iteratible with each value as an element
@@ -59,6 +60,11 @@ class Cat():
         for value in values:
             if isinstance(value, Cat): #another category
                 _values.extend(value.values)
+            elif '[' in value:
+                if cats is not None:
+                    _values.extend(cats[value.strip('[]')])
+                else:
+                    continue
             else:
                 _values.append(value)
         self.values = _values
@@ -126,6 +132,8 @@ class Word():
         self.polygraphs = [g for g in graphs if len(g)>1]
         if lexeme is None:
             self.phones = []
+        elif isinstance(lexeme, list):
+            self.phones = lexeme
         else:
             self.phones = parse_word(' {} '.format(lexeme), self.sep, self.polygraphs)
         self.syllables = syllables #do a bit of sanity checking here
@@ -198,7 +206,7 @@ class Word():
         self.phones.reverse()
     
     def find(self, sub, start=None, end=None):
-        '''Match a list using pattern notation to the word.
+        '''Match a sequence using pattern notation to the word.
         
         Arguments:
             sub   -- the list to be found (list)
@@ -207,33 +215,39 @@ class Word():
         
         Returns an int
         '''
-        if not (start is None and end is None): #this sucks and should be changed
-            return self[start:end].find(sub)
-        i = 0 #position in the word
-        for j, sym in enumerate(sub):
-            if i >= len(self):
-                return -1 #we've run out of word, so this fails
-            elif isinstance(sym, tuple): #optional sequence; this isn't actually fixed yet
-                seg = self[i]
-                if not (seg in sym if isinstance(sym, Cat) else seg == sym):
-                    i -= 1 #if this fails, we jump back to where we were
-            elif sym == '*': #wildcard
-                if self.find(sub[j+1:],i) == -1:
-                    break #only fails if the rest of the sequence is nowhere present
+        if start is None:
+            start = 0
+        if end is None:
+            end = len(self)
+        elif end < 0:
+            end += len(self)
+        for i in range(start, end):
+            j = i #position in the word
+            for k, sym in enumerate(sub):
+                if j >= end: #we've reached the end of the slice, so the find fails
+                    return -1
+                elif isinstance(sym, tuple): #optional sequence
+                    if self.find(list(sym)+sub[k+1:], j, end) == 0: #try with the optional sequence
+                        return j
+                    else: #if this fails, we jump back to where we were
+                        j -= 1
+                elif isinstance(sym, Cat): #category
+                    if not self[i] in sym: #this may change
+                        break
+                elif sym == '*': #wildcard
+                    k = sub.index('*')
+                    if self.find(sub[k+1:],j) != -1: #only fails if the rest of the sequence is nowhere present
+                        return i
+                    else:
+                        break
                 else:
-                    return 0
+                    if self[j] != sym:
+                        break
+                j += 1
             else:
-                seg = self[i]
-                if not (seg in sym if isinstance(sym, Cat) else seg == sym):
-                    break
-            i += 1
+                return i
         else:
-            return 0
-        pos = self[1:].find(sub)
-        if pos == -1:
-            return pos
-        else:
-            return pos+1
+            return -1
     
     def match_env(self, env, pos=0, run=0): #test if the env matches the word at index pos
         '''Match a sound change environment to the word.
@@ -247,7 +261,7 @@ class Word():
         '''
         if len(env) == 1:
             return env[0] in self
-        elif len(env) == 2:
+        else:
             if pos:
                 matchLeft = self[::-1].find(env[0],-pos)
             else: #at the left edge, which can only be matched by a null env
@@ -271,6 +285,7 @@ def parse_syms(syms, cats):
     
     Returns a list
     '''
+    #old
     for char in '()[]{},#*_':
         syms = syms.replace(char, '.'+char+'.')
     syms = syms.replace('.', ' ').split()
@@ -314,8 +329,27 @@ def parse_syms(syms, cats):
             end = ends.pop()
             del syms[i:end+1]
     return syms
+    #new
+    for char in '([{}])':
+        syms.replace(char, f' {char} ')
+    syms = nest_split(syms, ' ', ('([{','}])'), 0)
+    for i in reversed(range(len(syms))):
+        syms[i] = syms[i].replace(' ','')
+        if syms[i][0] == '(': #optional - parse to tuple
+            syms[i] = tuple(parse_syms(syms[i].strip('()'), cats))
+        elif syms[i][0] == '[': #category - parse to Cat
+            syms[i] = syms[i].strip('[]')
+            if ',' in syms[i]: #nonce cat
+                syms[i] = Cat(syms[i])
+            else: #named cat
+                syms[i] = cats(syms[i])
+        elif syms[i][0] == '{': #subset - unimplemented, delete
+            del syms[i]
+        else: #text - parse as word
+            syms[i:i] = parse_word(syms[i])
+    return syms
 
-def parse_word(word, sep, polygraphs):
+def parse_word(word, sep="'", polygraphs=[]):
     '''Parse a string of graphemes.
     
     Arguments:
@@ -328,7 +362,7 @@ def parse_word(word, sep, polygraphs):
     #black magic
     test = ''
     graphemes = []
-    for char in '#'.join('.{}.'.format(word).split()).strip('.')+sep: #convert all whitespace to a single #
+    for char in '#'.join(f'.{word}.'.split()).strip('.')+sep: #convert all whitespace to a single #
         test += char
         while len(test) > 1 and not any(g.startswith(test) for g in polygraphs): #while test isn't a single character and doesn't begin any polygraph
             for i in reversed(range(1,len(test)+1)): #from i=len(test) to i=1

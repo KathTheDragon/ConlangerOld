@@ -258,14 +258,14 @@ class Rule():
             index += 1
         if not count:
             count = range(len(matches))
-        envs, excs = rule.envs, rule.excs
+        envs, excs = self.envs, self.excs
         for match in sorted([matches[c] for c in count], reverse=True):
             for exc in excs: #don't keep this match if any exception matches
-                if self.match_env(exc, match, len(tar)):
+                if word.match_env(exc, match, len(tar)):
                     break
             else:
                 for env in envs: #keep this match if any environment matches
-                    if self.match_env(env, match, len(tar)):
+                    if word.match_env(env, match, len(tar)):
                         yield match
                         break
     
