@@ -1,5 +1,5 @@
-"""Collection of conlanging tools
-""""""
+'''Collection of conlanging tools
+''''''
 ==================================== To-do ====================================
 === Bug-fixes ===
 
@@ -8,5 +8,5 @@
 === Features ===
 
 === Style ===
-"""
+'''
 

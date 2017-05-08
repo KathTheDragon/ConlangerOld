@@ -1,4 +1,4 @@
-"""Create and manipulate languages
+'''Create and manipulate languages
 
 Classes:
     Language -- represents a language
@@ -6,7 +6,7 @@ Classes:
 Functions:
     load_lang -- load the data from the named language file
     save_lang -- save the given language's data to file
-""""""
+''''''
 ==================================== To-do ====================================
 === Bug-fixes ===
 
@@ -18,14 +18,14 @@ Add generating every possible word/root
 
 === Style ===
 Consider where to raise/handle exceptions
-"""
+'''
 
 from core import Cat, Config, parse_syms
 import gen
 
 #== Classes ==#
 class Language():
-    """Class for representing a single language.
+    '''Class for representing a single language.
     
     Instance variables:
         name        -- language name (str)
@@ -39,10 +39,10 @@ class Language():
         parse_patterns -- parse a string denoting generation patterns
         gen_word       -- generate words
         gen_root       -- generate roots
-    """
+    '''
     
     def __init__(self, name='', cats=None, wordConfig=None, rootConfig=None, patternFreq=0, graphFreq=0):
-        """Constructor for Language().
+        '''Constructor for Language().
         
         Arguments:
             name        -- language name (str)
@@ -51,7 +51,7 @@ class Language():
             rootConfig  -- root configuration data (Config)
             patternFreq -- drop-off frequency for patterns (float)
             graphFreq   -- drop-off frequency for graphemes (float)
-        """
+        '''
         self.name = name
         if cats is None:
             self.cats = {}
@@ -85,26 +85,26 @@ class Language():
         self.graphFreq = graphFreq
     
     def parse_patterns(self, patterns):
-        """Parses generation patterns.
+        '''Parses generation patterns.
         
         Arguments:
             patterns -- set of patterns to parse (str)
         
         Returns a list
-        """
-        patterns = patterns.replace(",", " ").split()
+        '''
+        patterns = patterns.replace(',', ' ').split()
         for i in range(len(patterns)):
             patterns[i] = parse_syms(patterns[i], self.cats)
         return patterns
     
     def gen_word(self, num):
-        """Generates 'num' words.
+        '''Generates 'num' words.
         
         Arguments:
             num -- number of words to generate, 0 generates every possible word (int)
         
         Returns a list
-        """
+        '''
         if num == 0: #generate every possible word, unimplemented
             return []
         results = []
@@ -113,13 +113,13 @@ class Language():
         return results
     
     def gen_root(self, num):
-        """Generates 'num' roots.
+        '''Generates 'num' roots.
         
         Arguments:
             num -- number of roots to generate, 0 generates every possible root (int)
         
         Returns a list
-        """
+        '''
         if num == 0: #generate every possible word, unimplemented
             return []
         results = []
@@ -129,13 +129,13 @@ class Language():
 
 #== Functions ==#
 def load_lang(name):
-    """Loads language data from file.
+    '''Loads language data from file.
     
     Arguments:
         name -- the name of the language file to load from
     
     Returns a Language
-    """
+    '''
     with open('langs/{}.dat'.format(name.lower()), 'r', encoding='utf-8') as f:
         data = list(f)
     name = data[0].strip()
@@ -147,11 +147,11 @@ def load_lang(name):
     return Language(name, cats, wordConfig, rootConfig, patternFreq, graphFreq)
 
 def save_lang(lang):
-    """Saves a language to file.
+    '''Saves a language to file.
     
     Arguments:
         lang -- the Language to save
-    """
+    '''
     name = lang.name
     cats = str(lang.cats)
     wordConfig = str(lang.wordConfig)

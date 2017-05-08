@@ -1,4 +1,4 @@
-"""Apply sound changes to a lexicon
+'''Apply sound changes to a lexicon
 
 Exceptions:
     WordUnchanged -- exception to break out of repeated rule application
@@ -9,15 +9,14 @@ Classes:
 Functions:
     parse_ruleset -- parses a sound change ruleset
     apply_ruleset -- applies a set of sound change rules to a set of words
-""""""
+''''''
 ==================================== To-do ====================================
 === Bug-fixes ===
 
 === Implementation ===
 Check that tar still matches immediately before replacement (difficult)
 Check if a rule is able to run infinitely and raise an exception if it can
-- (tar in rep and rule["repeat"] < 1)
-Implement new delimiter splitting (aware of nesting)
+- (tar in rep and rule['repeat'] < 1)
 - probably best to make a generator split() here
 Move compiling code to own functions
 Update rule application to allow for application of the else rule.
@@ -26,7 +25,7 @@ Update rule application to allow for application of the else rule.
 === Features ===
 Implement $ and syllables
 Implement % for target reference
-Implement " for copying previous segment
+Implement ' for copying previous segment
 Implement flag 'chance' for non-deterministic rule application
 Implement additional logic options for environments
 Implement flag 'stop' to terminate execution if the rule succeeds
@@ -34,17 +33,17 @@ Implement flag 'stop' to terminate execution if the rule succeeds
 === Style ===
 Write docstrings
 Consider where to raise/handle exceptions
-"""
+'''
 
 from core import LangException, Cat, parse_syms
 
 #== Exceptions ==#
 class WordUnchanged(LangException):
-    """Used to indicate that the word was not changed by the rule."""
+    '''Used to indicate that the word was not changed by the rule.'''
 
 #== Classes ==#
 class Rule():
-    """Class for representing a sound change rule.
+    '''Class for representing a sound change rule.
     
     Instance variables:
         rule  -- the rule as a string (str)
@@ -59,14 +58,14 @@ class Rule():
         parse_field -- parse the fields of a rule
         parse_flags -- parse the flags of a rule
         apply       -- apply the rule to a word 
-    """  
+    '''  
     def __init__(self, rule, cats): #format is tars>reps/envs!excs flag; envs, excs, and flag are all optional
-        """Constructor for Rule
+        '''Constructor for Rule
         
         Arguments:
             rule -- the rule as a string
             cats -- list of categories used to interpret the rule 
-        """
+        '''
         self.rule = rule
         if ' ' in rule:
             rule, flags = rule.split()
@@ -126,15 +125,19 @@ class Rule():
     
     @staticmethod
     def parse_field(field, mode, cats):
-        """
+        '''Parse a field of a sound change rule.
         
         Arguments:
+            field -- the field to be parsed
+            mode  -- which kind of field it is
+            cats  -- list of named categories
         
-        """
+        Returns a list
+        '''
         _field = []
         if mode == 'envs':
             for env in field.split('|'):
-                if "~" in env: #~X is equivalent to X_,_X
+                if '~' in env: #~X is equivalent to X_,_X
                     _field += Rule.parse_field(env[1:]+'_|_'+env[1:], 'envs', cats)
                 else:
                     if '_' in env:
@@ -159,15 +162,17 @@ class Rule():
     
     @staticmethod
     def parse_flags(flags):
-        """
+        '''Parse the flags of a sound change rule.
         
         Arguments:
+            flags -- the flags to be parsed
             
-        """
-        _flags = {"ltr":0, "repeat":1, "age":1} #default values
-        for flag in flags.replace(",", " ").split():
-            if ":" in flag:
-                flag, arg = flag.split(":")
+        Returns a dictionary.
+        '''
+        _flags = {'ltr':0, 'repeat':1, 'age':1} #default values
+        for flag in flags.replace(',', ' ').split():
+            if ':' in flag:
+                flag, arg = flag.split(':')
                 _flags[flag] = arg
             else:
                 _flags[flag] = 1-_flags[flag]
@@ -192,7 +197,7 @@ class Rule():
             self.else_.reverse()
     
     def apply(self, word):
-        """Apply a single sound change rule to a single word.
+        '''Apply a single sound change rule to a single word.
         
         Arguments:
             word -- the word to which the rule is to be applied (Word)
@@ -200,10 +205,10 @@ class Rule():
         Returns a Word
         
         Raises WordUnchanged if the word was not changed by the rule.
-        """
+        '''
         tars, reps = self.tars, self.reps
         phones = word.phones
-        if self.flags["ltr"]:
+        if self.flags['ltr']:
             word.reverse()
         if not tars: #Epenthesis
             self.substitute(word, ([],[]), reps[0])
@@ -220,21 +225,24 @@ class Rule():
                         _rep = [rep[index]]
                         word.replace(match, 1, _rep)
                 else:
-                    if rep == ["?"]: #Metathesis
+                    if rep == ['?']: #Metathesis
                         rep = tar[0][::-1]
                     self.substitute(word, tar, rep)
-        if self.flags["ltr"]:
+        if self.flags['ltr']:
             word.reverse()
         if word.phones == phones:
             raise WordUnchanged
         return word
     
     def match_tar(self, tar, word): #get all places where tar matches against self
-        """
+        '''Match a target field (in list form) to a word.
         
         Arguments:
-            
-        """
+            tar  -- the target field to be matched
+            word -- the word to be matched to
+        
+        Yields integers.
+        '''
         matches = []
         if tar:
             tar, count = tar
@@ -270,27 +278,27 @@ class Rule():
 
 #== Functions ==#
 def parse_ruleset(ruleset, cats):
-    """Parse a sound change ruleset.
+    '''Parse a sound change ruleset.
     
     Arguments:
         ruleset -- the set of rules to be parsed
         cats    -- the categories to be used to parse the rules
     
     Returns a list.
-    """
+    '''
     if isinstance(ruleset, str):
         ruleset = ruleset.splitlines()
     for i in range(len(ruleset)):
         rule = ruleset[i]
-        if rule == "":
+        if rule == '':
             ruleset[i] = None
         elif isinstance(rule, Rule):
             continue
-        elif "=" in rule: #rule is a cat definition
-            cop = rule.index("=")
-            op = (rule[cop-1] if rule[cop-1] in "+-" else "") + "="
+        elif '=' in rule: #rule is a cat definition
+            cop = rule.index('=')
+            op = (rule[cop-1] if rule[cop-1] in '+-' else '') + '='
             name, vals = rule.split(op)
-            exec("cats[name] {} Cat(vals)".format(op))
+            exec('cats[name] {} Cat(vals)'.format(op))
             for cat in cats.keys(): #discard blank categories
                 if not cats[cat]:
                     del cats[cat]
@@ -303,30 +311,30 @@ def parse_ruleset(ruleset, cats):
     return ruleset
 
 def apply_ruleset(words, ruleset):
-    """Applies a set of sound change rules to a set of words.
+    '''Applies a set of sound change rules to a set of words.
     
     Arguments:
         words   -- the words to which the rules are to be applied (list)
         ruleset -- the rules which are to be applied to the words (list)
     
     Returns a list.
-    """
+    '''
     ruleset = parse_ruleset(ruleset)
     rules = [] #we use a list to store rules, since they may be applied multiple times
     for rule in ruleset:
         rules.append(rule)
-        print("Words =",[str(word) for word in words]) #for debugging
+        print('Words =',[str(word) for word in words]) #for debugging
         for i in range(len(words)):
             for rule in reversed(rules):
-                print("rule =",rule) #for debugging
-                for j in range(rule.flags["repeat"]):
+                print('rule =',rule) #for debugging
+                for j in range(rule.flags['repeat']):
                     try:
                         words[i] = rule.apply(words[i])
                     except WordUnchanged: #if the word didn't change, stop applying
                         break
         for i in reversed(range(len(rules))):
-            rules[i].flags["age"] -= 1
-            if rules[i].flags["age"] == 0: #if the rule has 'expired', discard it
+            rules[i].flags['age'] -= 1
+            if rules[i].flags['age'] == 0: #if the rule has 'expired', discard it
                 del rules[i]
     return words
 
