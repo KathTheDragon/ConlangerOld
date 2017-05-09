@@ -19,6 +19,7 @@ Functions:
 === Implementation ===
 Utilise new implementation of Word as sequence type
 - investigate reindexing Word
+Subclass Cat from list
 Break out format checking into separate functions
 I want to change supplying the actual syllable boundaries to Word to giving a syllabifier function - this is obviously language-dependent
 Look into revising the parsing of nonce categories

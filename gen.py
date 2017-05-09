@@ -100,7 +100,7 @@ def populate(pattern, frequency, all=False):
         for seg in pattern:
             if isinstance(seg, Cat):
                 result.append(dist(seg, frequency))
-            elif seg == ''':
+            elif seg == "'":
                 result.append(result[-1])
             else:
                 result.append(seg)
@@ -114,7 +114,7 @@ def populate(pattern, frequency, all=False):
                     for sym in seg:
                         temp.append(result+[sym])
                 results = temp
-            elif seg == ''':
+            elif seg == "'":
                 for i in range(len(results)):
                     results[i].append(results[i][-1])
             else:
