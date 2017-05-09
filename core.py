@@ -286,51 +286,6 @@ def parse_syms(syms, cats):
     
     Returns a list
     '''
-    #old
-    for char in '()[]{},#*_':
-        syms = syms.replace(char, '.'+char+'.')
-    syms = syms.replace('.', ' ').split()
-    ends = [] #store indices of close-brackets here
-    for i in reversed(range(len(syms))): #process brackets
-        if syms[i] in ')]}':
-            ends.append(i)
-        elif syms[i] == '(': #optional segment - to tuple
-            end = ends.pop()
-            syms[i:end+1] = tuple(syms[i+1:end])
-        elif syms[i] == '[': #category - to list and then Cat
-            end = ends.pop()
-            if ',' in syms[i+1:end]: #nonce category
-                temp = syms[i+1:end]
-                cat = []
-                while True: #the list is partitioned by ','
-                    index = temp.find(',')
-                    if index != -1:
-                        if index == 1:
-                            seg = temp[0]
-                            if seg in cats:
-                                seg = cats[seg]
-                            cat.append(seg)
-                        else:
-                            cat.extend(temp[:index]) #as it stands, this can't deal with sequences
-                        del temp[:index+1]
-                    else:
-                        if len(temp) == 1:
-                            seg = temp[0]
-                            if seg in cats:
-                                seg = cats[seg]
-                            cat.append(seg)
-                        else:
-                            cat.extend(temp)
-                        del temp
-                        break
-                syms[i:end+1] = [Cat(cat)]
-            elif syms[i+1] in cats and end == i+2: #named category
-                syms[i:end+1] = [cats[syms[i+1]]]
-        elif syms[i] == '{': #subset - unimplemented, delete contents
-            end = ends.pop()
-            del syms[i:end+1]
-    return syms
-    #new
     for char in '([{}])':
         syms.replace(char, f' {char} ')
     syms = nest_split(syms, ' ', ('([{','}])'), 0)
