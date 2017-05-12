@@ -19,13 +19,11 @@ Functions:
 === Implementation ===
 Utilise new implementation of Word as sequence type
 - investigate reindexing Word
-Subclass Cat from list
 Break out format checking into separate functions
 I want to change supplying the actual syllable boundaries to Word to giving a syllabifier function - this is obviously language-dependent
-Look into revising the parsing of nonce categories
 
 === Features ===
-Implement cat subsets
+Implement cat subsets - maybe?
 
 === Style ===
 Consider where to raise/handle exceptions
@@ -41,14 +39,14 @@ class FormatError(LangException):
     '''Exception raised for errors in formatting objects.'''
 
 #== Classes ==#
-class Cat():
+class Cat(list):
     '''Represents a category of graphemes.
     
     Instance variables:
         values -- the values in the category (list)
     '''
     
-    def __init__(self, values, cats=None):
+    def __init__(self, values=None, cats=None):
         '''Constructor for Cat.
         
         Arguments:
@@ -56,50 +54,30 @@ class Cat():
             cats   -- dictionary of categories (dict)
         '''
         _values = []
-        if isinstance(values, str): #we want an iteratible with each value as an element
+        if values is None:
+            values = []
+        elif isinstance(values, str): #we want an iteratible with each value as an element
             values = values.replace(',',' ').split()
         for value in values:
             if isinstance(value, Cat): #another category
                 _values.extend(value.values)
             elif '[' in value:
-                if cats is not None:
+                if cats is not None and value.strip('[]') in cats:
                     _values.extend(cats[value.strip('[]')])
                 else:
                     continue
             else:
                 _values.append(value)
-        self.values = _values
+        list.__init__(self, _values)
     
     def __repr__(self):
-        return 'Cat({})'.format(repr(self.values))
+        return f"Cat('{self!s}')"
     
-    def __bool__(self):
-        return bool(self.values)
-    
-    def __len__(self):
-        return len(self.values)
-    
-    def __getitem__(self, key):
-        return self.values[key]
-    
-    def __setitem__(self, key, value):
-        self.values[key] = value
-    
-    def __delitem__(self, key):
-        del self.values[key]
-    
-    def __iter__(self):
-        return iter(self.values)
-    
-    def __contains__(self, item):
-        return item in self.values
+    def __str__(self):
+        return ', '.join(self)
     
     def __and__(self, cat):
         values = [value for value in self if value in cat]
-        return Cat(values)
-    
-    def __add__(self, cat):
-        values = self.values + cat.values
         return Cat(values)
     
     def __sub__(self, cat):
@@ -136,11 +114,11 @@ class Word():
         elif isinstance(lexeme, list):
             self.phones = lexeme
         else:
-            self.phones = parse_word(' {} '.format(lexeme), self.sep, self.polygraphs)
+            self.phones = parse_word(f' {lexeme} ', self.sep, self.polygraphs)
         self.syllables = syllables #do a bit of sanity checking here
     
     def __repr__(self):
-        return "Word('{!s}')".format(self)
+        return f"Word('{self!s}')"
     
     def __str__(self):
         word = curr = ''
@@ -218,12 +196,14 @@ class Word():
         '''
         if start is None:
             start = 0
+        elif start < 0:
+            start += len(self)
         if end is None:
             end = len(self)
         elif end < 0:
             end += len(self)
-        for i in range(start, end):
-            j = i #position in the word
+        for i in range(0, end-start):
+            j = i + start #position in the word
             for k, sym in enumerate(sub):
                 if j >= end: #we've reached the end of the slice, so the find fails
                     return -1
@@ -236,7 +216,6 @@ class Word():
                     if not self[i] in sym: #this may change
                         break
                 elif sym == '*': #wildcard
-                    k = sub.index('*')
                     if self.find(sub[k+1:],j) != -1: #only fails if the rest of the sequence is nowhere present
                         return i
                     else:
