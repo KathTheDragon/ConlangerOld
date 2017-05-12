@@ -21,6 +21,7 @@ Utilise new implementation of Word as sequence type
 - investigate reindexing Word
 Break out format checking into separate functions
 I want to change supplying the actual syllable boundaries to Word to giving a syllabifier function - this is obviously language-dependent
+Perhaps adjust Cat.__init__ to allow sequences of graphemes to be stored
 
 === Features ===
 Implement cat subsets - maybe?
@@ -202,6 +203,8 @@ class Word():
             end = len(self)
         elif end < 0:
             end += len(self)
+        if isinstance(sub, Word):
+            sub = sub[1:-1] #we want to strip out the leading and trailing '#'s so that this works like finding substrings
         for i in range(0, end-start):
             j = i + start #position in the word
             for k, sym in enumerate(sub):

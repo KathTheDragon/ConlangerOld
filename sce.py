@@ -28,10 +28,14 @@ Update rule application to allow for application of the else rule.
 Implement $ and syllables
 Implement % for target reference
 Implement " for copying previous segment
+Implement * in the target, with variants **, *?, **?
 Implement ^ for range indices
 Implement flag 'chance' for non-deterministic rule application
-Implement additional logic options for environments
 Implement flag 'stop' to terminate execution if the rule succeeds
+Implement flag 'ditto' to only run a rule if the previous rule ran
+Implement extended category substitution
+Implement additional logic options for environments
+Implement repetition shorthand
 
 === Style ===
 Write docstrings
@@ -196,7 +200,7 @@ class Rule():
             tar, indices = [], []
         index = 0
         while True:
-            match = self.find(tar, index) #find the next place where tar matches
+            match = word.find(tar, index) #find the next place where tar matches
             if match == -1: #no more matches
                 break
             index += match
