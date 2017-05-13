@@ -21,12 +21,10 @@ Check if a rule is able to run infinitely and raise an exception if it can
 - (tar in rep and rule['repeat'] < 1)
 - probably best to make a generator split() here
 Move compiling code to own functions
-Update rule application to allow for application of the else rule.
-- else condition: if there's an exception, if it matches, otherwise if the condition doesn't match
 
 === Features ===
 Implement $ and syllables
-Implement % for target reference
+Implement % for target reference - still needs to be implemented in environments
 Implement " for copying previous segment
 Implement * in the target, with variants **, *?, **?
 Implement ^ for range indices
@@ -42,6 +40,7 @@ Write docstrings
 Consider where to raise/handle exceptions
 '''
 
+from math import ceil
 from core import LangException, Cat, parse_syms
 
 #== Exceptions ==#
@@ -64,7 +63,7 @@ class Rule():
     Methods:
         apply       -- apply the rule to a word 
     '''  
-    def __init__(self, rule, cats): #format is tars>reps/envs!excs flag; envs, excs, and flag are all optional
+    def __init__(self, rule='', cats=None): #format is tars>reps/envs!excs flag; envs, excs, and flag are all optional
         '''Constructor for Rule
         
         Arguments:
@@ -78,7 +77,7 @@ class Rule():
             flags = ''
         if '+' in rule:
             rule = rule.replace('+', '>')
-        if '-' in rule:
+        elif '-' in rule:
             rule = rule.replace('-', '')
         rule = rule.replace('>', ' >').replace('/', ' /').replace('!', ' !').split(' ')
         tars = rule.pop(0)
@@ -105,15 +104,23 @@ class Rule():
                 continue
             else_ = rule[i:]
             else_.insert(0,tars)
+        if reps is None:
+            reps = ''
         if envs is None:
             envs = '_'
         if excs is None:
             excs = ''
+        if cats is None:
+            cats = {}
         self.tars = parse_field(tars, 'tars', cats)
         self.reps = parse_field(reps, 'reps', cats)
         self.envs = parse_field(envs, 'envs', cats)
         self.excs = parse_field(excs, 'envs', cats)
         self.flags = parse_flags(flags)
+        if not self.reps:
+            self.reps = [[]]
+        if len(self.reps) < len(self.tars):
+            self.reps *= ceil(len(self.tars)/len(self.reps))
         if else_ is not None:
             self.else_ = Rule(''.join(else_), cats)
         else:
@@ -147,7 +154,7 @@ class Rule():
             self.else_.reverse()
     
     def apply(self, word):
-        '''Apply a single sound change rule to a single word.
+        '''Apply the sound change rule to a single word.
         
         Arguments:
             word -- the word to which the rule is to be applied (Word)
@@ -157,74 +164,81 @@ class Rule():
         Raises WordUnchanged if the word was not changed by the rule.
         '''
         tars, reps = self.tars, self.reps
-        phones = word.phones
+        phones = word.phones[:]
         if self.flags['ltr']:
             word.reverse()
-        if not tars: #Epenthesis
-            self.substitute(word, ([],[]), reps[0])
-        elif not reps: #Deletion
-            for tar in tars:
-                self.substitute(word, tar, [])
-        else: #Substitution
-            for tar, rep in zip(tars, reps):
-                if isinstance(rep[0], Cat) and isinstance(tar[0][0], Cat): #Cat substitution
-                    matches = word.match_tar(tar, self)
-                    tar, rep = tar[0][0], rep[0]
-                    for match in matches:
-                        index = tar.index(word[match])
-                        _rep = [rep[index]]
-                        word.replace(match, 1, _rep)
-                else:
-                    if rep == ['?']: #Metathesis
-                        rep = tar[0][::-1]
-                    self.substitute(word, tar, rep)
+        matches = self.match_tar(word)
+        for match in matches:
+            rule.apply_match(match, word)
         if self.flags['ltr']:
             word.reverse()
         if word.phones == phones:
             raise WordUnchanged
         return word
     
-    def match_tar(self, tar, word): #get all places where tar matches against self
-        '''Match a target field (in list form) to a word.
+    def match_tar(self, word): #this could potentially be moved inside apply()
+        '''Match the rule's target field (in list form) to a word.
         
         Arguments:
-            tar  -- the target field to be matched
             word -- the word to be matched to
         
-        Yields integers.
+        Returns a list.
         '''
         matches = []
-        if tar:
-            tar, indices = tar
-        else:
-            tar, indices = [], []
-        index = 0
-        while True:
-            match = word.find(tar, index) #find the next place where tar matches
-            if match == -1: #no more matches
-                break
-            index += match
-            matches.append(index)
-            index += 1
-        if not indices:
-            indices = range(len(matches))
-        envs, excs = self.envs, self.excs
-        for match in sorted([matches[i] for i in indices], reverse=True):
-            for exc in excs: #don't keep this match if any exception matches
-                if word.match_env(exc, match, len(tar)):
-                    break
+        tars = self.tars
+        if not tars:
+            tars = [([],[])]
+        for i in range(len(tars)):
+            if tars[i]:
+                tar, indices = tars[i]
             else:
-                for env in envs: #keep this match if any environment matches
-                    if word.match_env(env, match, len(tar)):
-                        yield match
-                        break
+                tar, indices = [], []
+            _matches = []
+            index = 0
+            while True:
+                match, _tar = word.find(tar, index, return_match=True) #find the next place where tar matches
+                if match == -1: #no more matches
+                    break
+                index += match
+                _matches.append((index, _tar, i))
+                index += 1
+            if not indices:
+                indices = range(len(_matches))
+            matches += [_matches[i] for i in indices]
+        return sorted(matches, reverse=True)
     
-    #This is decidedly temporary, pending the rewrite of rule application
-    def substitute(self, word, tar, rep):
-        matches = self.match_tar(tar, word)
-        run = len(tar[0])
-        for match in matches:
-            word.replace(match, run, rep)
+    def apply_match(self, match, word):
+        '''Apply a replacement if a match from match_tar meets the rule condition.
+        
+        Arguments:
+            match -- the match to be checked
+            word  -- the word to check against
+        '''
+        index, tar, i = match
+        if self.excs: #might need improvement
+            for exc in self.excs: #if any exception matches, try checking else_
+                if word.match_env(exc, index, len(tar)):
+                    if self.else_ is not None:
+                        self.else_.apply_match(match, word)
+                    return
+            for env in self.envs: #if any environment matches, return the match
+                if word.match_env(env, index, len(tar)):
+                    rep = self.reps[i]
+                    if len(rep) == 1 and isinstance(rep[0], Cat):
+                        rep[0] = rep[0][self.tars[i][0][0].index(tar[0])]
+                    word.replace(index, tar, rep)
+                    return
+            #rule failed
+        else:
+            for env in self.envs: #if any environment matches, return the match
+                if word.match_env(env, index, len(tar)):
+                    rep = self.reps[i]
+                    if len(rep) == 1 and isinstance(rep[0], Cat):
+                        rep[0] = rep[0][self.tars[i][0][0].index(tar[0])]
+                    word.replace(index, tar, rep)
+                    return
+            if self.else_ is not None: #try checking else_
+                self.else_.apply_match(match, word)
 
 #== Functions ==#
 def parse_ruleset(ruleset, cats):
@@ -272,22 +286,24 @@ def parse_field(field, mode, cats):
     '''
     _field = []
     if mode == 'envs':
-        for env in field.split('|'):
+        for env in field.replace('|', ' ').split():
             if '~' in env: #~X is equivalent to X_,_X
-                _field += Rule.parse_field(env[1:]+'_|_'+env[1:], 'envs', cats)
+                _field += Rule.parse_field('{0}_|_{0}'.format(envs[1:]), 'envs', cats)
             else:
                 if '_' in env:
                     env = env.split('_')
-                    env = [parse_syms(env[0], cats)[::-1], parse_syms(env[1], cats)]
+                    env = [parse_syms(env[0], cats)[::-1] if env[0] else [], parse_syms(env[1], cats) if env[1] else []]
                 else:
                     env = [parse_syms(env, cats)]
                 _field.append(env)
     else:
-        for tar in field.split(','):
+        for tar in field.replace(',', ' ').split():
             if mode == 'tars':
                 if '@' in tar:
                     tar, index = tar.split('@')
                     indices = index.replace('|', ' ').split()
+                    for i in range(len(indices)):
+                        indices[i] = int(indices[i])
                 else:
                     indices = []
             tar = parse_syms(tar, cats)

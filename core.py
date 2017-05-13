@@ -25,6 +25,7 @@ Perhaps adjust Cat.__init__ to allow sequences of graphemes to be stored
 
 === Features ===
 Implement cat subsets - maybe?
+Perhaps write another splitting function to replace the .replace(char, ' ').split() almalgam
 
 === Style ===
 Consider where to raise/handle exceptions
@@ -185,7 +186,7 @@ class Word():
     def reverse(self):
         self.phones.reverse()
     
-    def find(self, sub, start=None, end=None):
+    def find(self, sub, start=None, end=None, return_match=False):
         '''Match a sequence using pattern notation to the word.
         
         Arguments:
@@ -205,32 +206,63 @@ class Word():
             end += len(self)
         if isinstance(sub, Word):
             sub = sub[1:-1] #we want to strip out the leading and trailing '#'s so that this works like finding substrings
-        for i in range(0, end-start):
-            j = i + start #position in the word
-            for k, sym in enumerate(sub):
-                if j >= end: #we've reached the end of the slice, so the find fails
-                    return -1
-                elif isinstance(sym, tuple): #optional sequence
-                    if self.find(list(sym)+sub[k+1:], j, end) == 0: #try with the optional sequence
-                        return j
-                    else: #if this fails, we jump back to where we were
-                        j -= 1
-                elif isinstance(sym, Cat): #category
-                    if not self[i] in sym: #this may change
-                        break
-                elif sym == '*': #wildcard
-                    if self.find(sub[k+1:],j) != -1: #only fails if the rest of the sequence is nowhere present
-                        return i
+        #shitty implementation for return_match for now, at some point this will be redone
+        if not return_match:
+            for i in range(0, end-start):
+                j = i + start #position in the word
+                for k, sym in enumerate(sub):
+                    if j >= end: #we've reached the end of the slice, so the find fails
+                        return -1
+                    elif isinstance(sym, tuple): #optional sequence
+                        if self.find(list(sym)+sub[k+1:], j, end) == 0: #try with the optional sequence
+                            return i
+                        else: #if this fails, we jump back to where we were
+                            j -= 1
+                    elif isinstance(sym, Cat): #category
+                        if not self[j] in sym: #this may change - definitely if categories are allowed to contain sequences
+                            break
+                    elif sym == '*': #wildcard
+                        if self.find(sub[k+1:],j, end) != -1: #only fails if the rest of the sequence is nowhere present
+                            return i
+                        else:
+                            break
                     else:
-                        break
+                        if self[j] != sym:
+                            break
+                    j += 1
                 else:
-                    if self[j] != sym:
-                        break
-                j += 1
+                    return i
             else:
-                return i
+                return -1
         else:
-            return -1
+            for i in range(0, end-start):
+                j = i + start #position in the word
+                for k, sym in enumerate(sub):
+                    if j >= end: #we've reached the end of the slice, so the find fails
+                        return -1, []
+                    elif isinstance(sym, tuple): #optional sequence
+                        index, match = self.find(list(sym)+sub[k+1:], j, end, return_match)
+                        if index == 0: #try with the optional sequence
+                            return i, self[i+start:j]+match
+                        else: #if this fails, we jump back to where we were
+                            j -= 1
+                    elif isinstance(sym, Cat): #category
+                        if not self[j] in sym: #this may change - definitely if categories are allowed to contain sequences
+                            break
+                    elif sym == '*': #wildcard
+                        index, match = self.find(sub[k+1:],j, end, return_match)
+                        if index != -1: #only fails if the rest of the sequence is nowhere present
+                            return i, self[i+start:index+j]+match
+                        else:
+                            break
+                    else:
+                        if self[j] != sym:
+                            break
+                    j += 1
+                else:
+                    return i, self[i+start:j]
+            else:
+                return -1, []
     
     def match_env(self, env, pos=0, run=0): #test if the env matches the word at index pos
         '''Match a sound change environment to the word.
@@ -252,8 +284,13 @@ class Word():
             matchRight = self.find(env[1], pos+run)
             return matchLeft == matchRight == 0
     
-    def replace(self, start, run, rep):
-        self[start:start+run] = rep
+    def replace(self, start, tar, rep):
+        for i in reversed(range(len(rep))):
+            if rep[i] == '%': #target copying
+                rep[i:i+1] = tar
+            elif rep[i] == '<': #target reversal/metathesis
+                rep[i:i+1] = reversed(tar)
+        self[start:start+len(tar)] = rep
         return
 
 Config = namedtuple('Config', 'patterns, counts, constraints, freq, monofreq')
@@ -280,11 +317,11 @@ def parse_syms(syms, cats):
             if ',' in syms[i]: #nonce cat
                 syms[i] = Cat(syms[i])
             else: #named cat
-                syms[i] = cats(syms[i])
+                syms[i] = cats[syms[i]]
         elif syms[i][0] == '{': #subset - unimplemented, delete
             del syms[i]
         else: #text - parse as word
-            syms[i:i] = parse_word(syms[i])
+            syms[i:i+1] = parse_word(syms[i])
     return syms
 
 def parse_word(word, sep="'", polygraphs=[]):
