@@ -262,7 +262,9 @@ def parse_ruleset(ruleset, cats=None):
             ruleset[i] = None
         elif isinstance(rule, Rule):
             continue
-        elif '=' in rule: #rule is a cat definition
+        elif '>' in rule or rule[0] in '+-': #rule is a sound change
+            ruleset[i] = Rule(rule, cats)
+        else: #rule is a cat definition
             cop = rule.index('=')
             op = (rule[cop-1] if rule[cop-1] in '+-' else '') + '='
             name, vals = rule.split(op)
@@ -271,8 +273,6 @@ def parse_ruleset(ruleset, cats=None):
                 if not cats[cat]:
                     del cats[cat]
             ruleset[i] = None
-        else: #rule is a sound change
-            ruleset[i] = Rule(rule, cats)
     for i in reversed(range(len(ruleset))):
         if ruleset[i] is None or ruleset[i].flags['ignore']:
             del ruleset[i]
