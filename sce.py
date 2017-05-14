@@ -275,7 +275,7 @@ def parse_ruleset(ruleset, cats=None):
         else: #rule is a sound change
             ruleset[i] = Rule(rule, cats)
     for i in reversed(range(len(ruleset))):
-        if ruleset[i] is None:
+        if ruleset[i] is None or ruleset[i].flags['ignore']:
             del ruleset[i]
     return ruleset
     
@@ -327,7 +327,7 @@ def parse_flags(flags):
         
     Returns a dictionary.
     '''
-    _flags = {'ltr':0, 'repeat':1, 'age':1} #default values
+    _flags = {'ignore':0, 'ltr':0, 'repeat':1, 'age':1} #default values
     for flag in flags.replace(',', ' ').split():
         if ':' in flag:
             flag, arg = flag.split(':')
