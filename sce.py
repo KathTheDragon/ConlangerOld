@@ -267,7 +267,7 @@ def parse_ruleset(ruleset, cats=None):
             op = (rule[cop-1] if rule[cop-1] in '+-' else '') + '='
             name, vals = rule.split(op)
             exec(f'cats[name] {op} Cat(vals)')
-            for cat in cats.keys(): #discard blank categories
+            for cat in list(cats.keys()): #discard blank categories
                 if not cats[cat]:
                     del cats[cat]
             ruleset[i] = None
