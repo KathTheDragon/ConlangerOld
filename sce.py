@@ -328,7 +328,7 @@ def parse_flags(flags):
     for flag in flags.replace(',', ' ').split():
         if ':' in flag:
             flag, arg = flag.split(':')
-            _flags[flag] = arg
+            _flags[flag] = int(arg)
         else:
             _flags[flag] = 1-_flags[flag]
     return _flags
