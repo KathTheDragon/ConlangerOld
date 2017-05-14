@@ -241,12 +241,12 @@ class Rule():
                 self.else_.apply_match(match, word)
 
 #== Functions ==#
-def parse_ruleset(ruleset, cats):
+def parse_ruleset(ruleset, cats={}):
     '''Parse a sound change ruleset.
     
     Arguments:
         ruleset -- the set of rules to be parsed
-        cats    -- the categories to be used to parse the rules
+        cats    -- the initial categories to be used to parse the rules
     
     Returns a list.
     '''
@@ -329,16 +329,17 @@ def parse_flags(flags):
             _flags[flag] = 1-_flags[flag]
     return _flags
 
-def apply_ruleset(words, ruleset):
+def apply_ruleset(words, ruleset, cats={}):
     '''Applies a set of sound change rules to a set of words.
     
     Arguments:
         words   -- the words to which the rules are to be applied (list)
         ruleset -- the rules which are to be applied to the words (list)
+        cats    -- the initial categories to be used (dict)
     
     Returns a list.
     '''
-    ruleset = parse_ruleset(ruleset)
+    ruleset = parse_ruleset(ruleset, cats)
     rules = [] #we use a list to store rules, since they may be applied multiple times
     for rule in ruleset:
         rules.append(rule)
