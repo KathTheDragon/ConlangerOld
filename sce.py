@@ -169,23 +169,6 @@ class Rule():
         phones = word.phones[:]
         if self.flags['ltr']:
             word.reverse()
-        matches = self.match_tar(word)
-        for match in matches:
-            self.apply_match(match, word)
-        if self.flags['ltr']:
-            word.reverse()
-        if word.phones == phones:
-            raise WordUnchanged
-        return word
-    
-    def match_tar(self, word): #this could potentially be moved inside apply()
-        '''Match the rule's target field (in list form) to a word.
-        
-        Arguments:
-            word -- the word to be matched to
-        
-        Returns a list.
-        '''
         matches = []
         tars = self.tars
         if not tars:
@@ -207,10 +190,17 @@ class Rule():
             if not indices:
                 indices = range(len(_matches))
             matches += [_matches[i] for i in indices]
-        return sorted(matches, reverse=True)
+        matches = sorted(matches, reverse=True)
+        for match in matches:
+            self.apply_match(match, word)
+        if self.flags['ltr']:
+            word.reverse()
+        if word.phones == phones:
+            raise WordUnchanged
+        return word
     
     def apply_match(self, match, word):
-        '''Apply a replacement if a match from match_tar meets the rule condition.
+        '''Apply a replacement if a match meets the rule condition.
         
         Arguments:
             match -- the match to be checked
