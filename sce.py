@@ -43,6 +43,9 @@ Consider where to raise/handle exceptions
 from math import ceil
 from core import LangException, Cat, parse_syms
 
+#== Constants ==#
+MAX_RUNS = 10**3 #maximum number of times a rule may be repeated
+
 #== Exceptions ==#
 class WordUnchanged(LangException):
     '''Used to indicate that the word was not changed by the rule.'''
@@ -331,6 +334,10 @@ def parse_flags(flags):
             _flags[flag] = int(arg)
         else:
             _flags[flag] = 1-_flags[flag]
+    if _flags['repeat'] == 0:
+        _flags['repeat'] = MAX_RUNS
+    if _flags['age'] == 0:
+        _flags['age'] = MAX_RUNS
     return _flags
 
 def apply_ruleset(words, ruleset, cats=None):
