@@ -334,9 +334,9 @@ def parse_flags(flags):
             _flags[flag] = int(arg)
         else:
             _flags[flag] = 1-_flags[flag]
-    if _flags['repeat'] == 0:
+    if not 0 < _flags['repeat'] <= MAX_RUNS:
         _flags['repeat'] = MAX_RUNS
-    if _flags['age'] == 0:
+    if 0 < _flags['age'] <= MAX_RUNS:
         _flags['age'] = MAX_RUNS
     return _flags
 
