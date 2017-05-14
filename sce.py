@@ -169,7 +169,7 @@ class Rule():
             word.reverse()
         matches = self.match_tar(word)
         for match in matches:
-            rule.apply_match(match, word)
+            self.apply_match(match, word)
         if self.flags['ltr']:
             word.reverse()
         if word.phones == phones:
