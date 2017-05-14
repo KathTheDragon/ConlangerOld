@@ -241,7 +241,7 @@ class Rule():
                 self.else_.apply_match(match, word)
 
 #== Functions ==#
-def parse_ruleset(ruleset, cats={}):
+def parse_ruleset(ruleset, cats=None):
     '''Parse a sound change ruleset.
     
     Arguments:
@@ -250,6 +250,8 @@ def parse_ruleset(ruleset, cats={}):
     
     Returns a list.
     '''
+    if cats is None:
+        cats = {}
     if isinstance(ruleset, str):
         ruleset = ruleset.splitlines()
     for i in range(len(ruleset)):
@@ -274,7 +276,7 @@ def parse_ruleset(ruleset, cats={}):
             del ruleset[i]
     return ruleset
     
-def parse_field(field, mode, cats):
+def parse_field(field, mode, cats=None):
     '''Parse a field of a sound change rule.
     
     Arguments:
@@ -284,6 +286,8 @@ def parse_field(field, mode, cats):
     
     Returns a list
     '''
+    if cats is None:
+        cats = {}
     _field = []
     if mode == 'envs':
         for env in field.replace('|', ' ').split():
@@ -329,7 +333,7 @@ def parse_flags(flags):
             _flags[flag] = 1-_flags[flag]
     return _flags
 
-def apply_ruleset(words, ruleset, cats={}):
+def apply_ruleset(words, ruleset, cats=None):
     '''Applies a set of sound change rules to a set of words.
     
     Arguments:
@@ -339,6 +343,8 @@ def apply_ruleset(words, ruleset, cats={}):
     
     Returns a list.
     '''
+    if cats is None:
+        cats = {}
     ruleset = parse_ruleset(ruleset, cats)
     rules = [] #we use a list to store rules, since they may be applied multiple times
     for rule in ruleset:
