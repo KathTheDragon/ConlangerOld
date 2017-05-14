@@ -40,7 +40,7 @@ Consider where to raise/handle exceptions
 '''
 
 from math import ceil
-from core import LangException, Cat, parse_syms
+from core import LangException, Cat, parse_syms, nest_split
 
 #== Constants ==#
 MAX_RUNS = 10**3 #maximum number of times a rule may be repeated
@@ -303,7 +303,7 @@ def parse_field(field, mode, cats=None):
                     env = [parse_syms(env, cats)]
                 _field.append(env)
     else:
-        for tar in field.replace(',', ' ').split():
+        for tar in nest_split(field, ',', ('([{','}])'), 0, True):
             if mode == 'tars':
                 if '@' in tar:
                     tar, index = tar.split('@')
@@ -339,7 +339,7 @@ def parse_flags(flags):
         _flags['age'] = MAX_RUNS
     return _flags
 
-def apply_ruleset(words, ruleset, cats=None):
+def apply_ruleset(words, ruleset, cats=None, debug=False):
     '''Applies a set of sound change rules to a set of words.
     
     Arguments:
@@ -355,10 +355,12 @@ def apply_ruleset(words, ruleset, cats=None):
     rules = [] #we use a list to store rules, since they may be applied multiple times
     for rule in ruleset:
         rules.append(rule)
-        print('Words =',[str(word) for word in words]) #for debugging
+        if debug:
+            print('Words =',[str(word) for word in words]) #for debugging
         for i in range(len(words)):
             for rule in reversed(rules):
-                print('rule =',rule) #for debugging
+                if debug:
+                    print('rule =',rule) #for debugging
                 for j in range(rule.flags['repeat']):
                     try:
                         words[i] = rule.apply(words[i])

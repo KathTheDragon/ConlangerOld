@@ -357,7 +357,7 @@ def parse_word(word, sep="'", polygraphs=[]):
     return graphemes
 
 #this could potentially be changed at some point
-def nest_split(string, sep, nests, level):
+def nest_split(string, sep, nests, level, minimal=False):
     '''Nesting-aware string splitting.
     
     Arguments:
@@ -376,5 +376,8 @@ def nest_split(string, sep, nests, level):
             depth += 1
         if string[i] in nests[1]:
             depth -= 1
-    return string.split(' ')
+    if minimal:
+        return string.split()
+    else:
+        return string.split(' ')
 
