@@ -24,7 +24,6 @@ Move compiling code to own functions
 
 === Features ===
 Implement $ and syllables
-Implement % for target reference - still needs to be implemented in environments
 Implement " for copying previous segment
 Implement * in the target, with variants **, *?, **?
 Implement ^ for range indices
@@ -220,12 +219,12 @@ class Rule():
         index, tar, i = match
         if self.excs: #might need improvement
             for exc in self.excs: #if any exception matches, try checking else_
-                if word.match_env(exc, index, len(tar)):
+                if word.match_env(exc, index, tar):
                     if self.else_ is not None:
                         self.else_.apply_match(match, word)
                     return
             for env in self.envs: #if any environment matches, return the match
-                if word.match_env(env, index, len(tar)):
+                if word.match_env(env, index, tar):
                     rep = self.reps[i]
                     if len(rep) == 1 and isinstance(rep[0], Cat):
                         rep[0] = rep[0][self.tars[i][0][0].index(tar[0])]
@@ -234,7 +233,7 @@ class Rule():
             #rule failed
         else:
             for env in self.envs: #if any environment matches, return the match
-                if word.match_env(env, index, len(tar)):
+                if word.match_env(env, index, tar):
                     rep = self.reps[i]
                     if len(rep) == 1 and isinstance(rep[0], Cat):
                         rep[0] = rep[0][self.tars[i][0][0].index(tar[0])]

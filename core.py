@@ -264,16 +264,23 @@ class Word():
             else:
                 return -1, []
     
-    def match_env(self, env, pos=0, run=0): #test if the env matches the word at index pos
+    def match_env(self, env, pos=0, tar=None): #test if the env matches the word
         '''Match a sound change environment to the word.
         
         Arguments:
             env -- the environment to be matched (list)
             pos -- the index of the left edge of the target (int)
-            run -- the length of the target (int)
+            tar -- the target (list)
         
         Returns a bool
         '''
+        if tar is None:
+            tar = []
+        for i in reversed(range(len(env))):
+            if env[i] == '%':
+                env[i:i+1] = tar
+            if env[i] == '<':
+                env[i:i+1] = reversed(tar)
         if len(env) == 1:
             return env[0] in self
         else:
@@ -281,7 +288,7 @@ class Word():
                 matchLeft = self[::-1].find(env[0],-pos)
             else: #at the left edge, which can only be matched by a null env
                 matchLeft = -1 if env[0] else 0
-            matchRight = self.find(env[1], pos+run)
+            matchRight = self.find(env[1], pos+len(tar))
             return matchLeft == matchRight == 0
     
     def replace(self, start, tar, rep):
@@ -296,7 +303,7 @@ class Word():
 Config = namedtuple('Config', 'patterns, counts, constraints, freq, monofreq')
 
 #== Functions ==#
-def parse_syms(syms, cats):
+def parse_syms(syms, cats=None):
     '''Parse a string using pattern notation.
     
     Arguments:
@@ -305,6 +312,8 @@ def parse_syms(syms, cats):
     
     Returns a list
     '''
+    if cats is None:
+        cats = {}
     for char in '([{}])':
         syms.replace(char, f' {char} ')
     syms = nest_split(syms, ' ', ('([{','}])'), 0)
@@ -347,6 +356,7 @@ def parse_word(word, sep="'", polygraphs=[]):
                     break
     return graphemes
 
+#this could potentially be changed at some point
 def nest_split(string, sep, nests, level):
     '''Nesting-aware string splitting.
     
