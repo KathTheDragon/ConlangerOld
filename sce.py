@@ -77,10 +77,10 @@ class Rule():
             rule, flags = rule.split()
         else:
             flags = ''
-        if '+' in rule:
-            rule = rule.replace('+', '>')
-        elif '-' in rule:
-            rule = rule.replace('-', '')
+        if rule[0] == '+':
+            rule = '>'+rule[1:]
+        elif rule[0] == '-':
+            rule = rule[1:]
         rule = rule.replace('>', ' >').replace('/', ' /').replace('!', ' !').split(' ')
         tars = rule.pop(0)
         #We want to extract just the first iteration of (reps, envs, excs) and store everything else in else_
