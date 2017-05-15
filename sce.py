@@ -242,11 +242,12 @@ def parse_ruleset(ruleset, cats=None):
     
     Returns a list.
     '''
-    ruleset = ruleset.copy()
     if cats is None:
         cats = {}
     if isinstance(ruleset, str):
         ruleset = ruleset.splitlines()
+    else:
+        ruleset = ruleset.copy()
     for i in range(len(ruleset)):
         rule = ruleset[i]
         if rule == '':
