@@ -165,8 +165,7 @@ class Rule():
         
         Raises WordUnchanged if the word was not changed by the rule.
         '''
-        tars, reps = self.tars, self.reps
-        phones = word.phones[:]
+        phones = word.phones.copy()
         if self.flags['ltr']:
             word.reverse()
         matches = []
@@ -206,6 +205,7 @@ class Rule():
             match -- the match to be checked
             word  -- the word to check against
         '''
+        reps = self.reps.copy()
         index, tar, i = match
         if self.excs: #might need improvement
             for exc in self.excs: #if any exception matches, try checking else_
@@ -215,7 +215,7 @@ class Rule():
                     return
             for env in self.envs: #if any environment matches, return the match
                 if word.match_env(env, index, tar):
-                    rep = self.reps[i]
+                    rep = reps[i]
                     if len(rep) == 1 and isinstance(rep[0], Cat):
                         rep[0] = rep[0][self.tars[i][0][0].index(tar[0])]
                     word.replace(index, tar, rep)
@@ -242,6 +242,7 @@ def parse_ruleset(ruleset, cats=None):
     
     Returns a list.
     '''
+    ruleset = ruleset.copy()
     if cats is None:
         cats = {}
     if isinstance(ruleset, str):
@@ -335,10 +336,11 @@ def apply_ruleset(words, ruleset, cats=None, debug=False):
     Arguments:
         words   -- the words to which the rules are to be applied (list)
         ruleset -- the rules which are to be applied to the words (list)
-        cats    -- the initial categories to be used (dict)
+        cats    -- the initial categories to be used in ruleset parsing (dict)
     
     Returns a list.
     '''
+    words = words.copy()
     if cats is None:
         cats = {}
     ruleset = parse_ruleset(ruleset, cats)

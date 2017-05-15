@@ -188,7 +188,7 @@ class Word():
         self.phones.reverse()
     
     def strip(self, chars=None):
-        phones = self.phones[:]
+        phones = self.phones.copy()
         if chars is None:
             chars = '#'
         for i in range(len(phones)):
@@ -204,6 +204,7 @@ class Word():
         for i in reversed(range(len(phones))):
             if phones[i] == None:
                 del phones[i]
+        return Word(phones)
     
     def find(self, sub, start=None, end=None, return_match=False):
         '''Match a sequence using pattern notation to the word.
@@ -225,36 +226,35 @@ class Word():
             end += len(self)
         if isinstance(sub, Word):
             sub = sub.strip() #we want to strip out the leading and trailing '#'s so that this works like finding substrings
-        if not return_match:
-            for i in range(0, end-start):
-                j = i + start #position in the word
-                for k, sym in enumerate(sub):
-                    if j >= end: #we've reached the end of the slice, so the find fails
-                        return (-1, []) if return_match else -1
-                    elif isinstance(sym, tuple): #optional sequence
-                        index = self.find(list(sym)+sub[k+1:], j, end, return_match)
-                        if return_match:
-                            index, match = index
-                        if index == 0: #try with the optional sequence
-                            return (i, self[i+start:j]+match) if return_match else i
-                        j -= 1 #if this fails, we jump back to where we were
-                    elif isinstance(sym, Cat): #category
-                        if not self[j] in sym: #this may change - definitely if categories are allowed to contain sequences
-                            break
-                    elif sym == '*': #wildcard
-                        index = self.find(sub[k+1:],j, end, return_match)
-                        if return_match:
-                            index, match = index
-                        if index != -1: #only fails if the rest of the sequence is nowhere present
-                            return (i, self[i+start:index+j]+match) if return_match else i
+        for i in range(0, end-start):
+            j = i + start #position in the word
+            for k, sym in enumerate(sub):
+                if j >= end: #we've reached the end of the slice, so the find fails
+                    return (-1, []) if return_match else -1
+                elif isinstance(sym, tuple): #optional sequence
+                    index = self.find(list(sym)+sub[k+1:], j, end, return_match)
+                    if return_match:
+                        index, match = index
+                    if index == 0: #try with the optional sequence
+                        return (i, self[i+start:j]+match) if return_match else i
+                    j -= 1 #if this fails, we jump back to where we were
+                elif isinstance(sym, Cat): #category
+                    if not self[j] in sym: #this may change - definitely if categories are allowed to contain sequences
                         break
-                    elif self[j] != sym: #grapheme
-                        break
-                    j += 1
-                else:
-                    return (i, self[i+start:j]) if return_match else i
+                elif sym == '*': #wildcard
+                    index = self.find(sub[k+1:],j, end, return_match)
+                    if return_match:
+                        index, match = index
+                    if index != -1: #only fails if the rest of the sequence is nowhere present
+                        return (i, self[i+start:index+j]+match) if return_match else i
+                    break
+                elif self[j] != sym: #grapheme
+                    break
+                j += 1
             else:
-                return (-1, []) if return_match else -1
+                return (i, self[i+start:j]) if return_match else i
+        else:
+            return (-1, []) if return_match else -1
     
     def match_env(self, env, pos=0, tar=None): #test if the env matches the word
         '''Match a sound change environment to the word.
@@ -266,6 +266,7 @@ class Word():
         
         Returns a bool
         '''
+        env = env.copy()
         if tar is None:
             tar = []
         for i in reversed(range(len(env))):
@@ -284,6 +285,7 @@ class Word():
             return matchLeft == matchRight == 0
     
     def replace(self, start, tar, rep):
+        rep = rep.copy()
         for i in reversed(range(len(rep))):
             if rep[i] == '%': #target copying
                 rep[i:i+1] = tar
