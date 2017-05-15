@@ -20,7 +20,7 @@ Add generating every possible word/root
 Consider where to raise/handle exceptions
 '''
 
-from core import Cat, Config, parse_syms
+from core import Cat, Config, parse_syms, split
 import gen
 
 #== Classes ==#
@@ -92,7 +92,7 @@ class Language():
         
         Returns a list
         '''
-        patterns = patterns.replace(',', ' ').split()
+        patterns = split(patterns, ',', minimal=True)
         for i in range(len(patterns)):
             patterns[i] = parse_syms(patterns[i], self.cats)
         return patterns

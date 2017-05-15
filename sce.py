@@ -40,7 +40,7 @@ Consider where to raise/handle exceptions
 '''
 
 from math import ceil
-from core import LangException, Cat, parse_syms, nest_split
+from core import LangException, Cat, parse_syms, split
 
 #== Constants ==#
 MAX_RUNS = 10**3 #maximum number of times a rule may be repeated
@@ -261,7 +261,7 @@ def parse_ruleset(ruleset, cats=None):
             op = (rule[cop-1] if rule[cop-1] in '+-' else '') + '='
             name, vals = rule.split(op)
             exec(f'cats[name] {op} Cat(vals)')
-            for cat in list(cats.keys()): #discard blank categories
+            for cat in list(cats): #discard blank categories
                 if not cats[cat]:
                     del cats[cat]
             ruleset[i] = None
@@ -284,7 +284,7 @@ def parse_field(field, mode, cats=None):
         cats = {}
     _field = []
     if mode == 'envs':
-        for env in field.replace('|', ' ').split():
+        for env in split(field, '|', minimal=True):
             if '~' in env: #~X is equivalent to X_,_X
                 _field += Rule.parse_field('{0}_|_{0}'.format(envs[1:]), 'envs', cats)
             else:
@@ -295,11 +295,11 @@ def parse_field(field, mode, cats=None):
                     env = [parse_syms(env, cats)]
                 _field.append(env)
     else:
-        for tar in nest_split(field, ',', ('([{','}])'), 0, True):
+        for tar in split(field, ',', nesting=(0,'([{','}])'), minimal=True):
             if mode == 'tars':
                 if '@' in tar:
                     tar, index = tar.split('@')
-                    indices = index.replace('|', ' ').split()
+                    indices = split(index, '|', minimal=True)
                     for i in range(len(indices)):
                         indices[i] = int(indices[i])
                 else:
@@ -319,7 +319,7 @@ def parse_flags(flags):
     Returns a dictionary.
     '''
     _flags = {'ignore':0, 'ltr':0, 'repeat':1, 'age':1} #default values
-    for flag in flags.replace(',', ' ').split():
+    for flag in split(flags, ';', minimal=True):
         if ':' in flag:
             flag, arg = flag.split(':')
             _flags[flag] = int(arg)

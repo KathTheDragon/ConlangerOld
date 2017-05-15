@@ -11,7 +11,7 @@ Classes:
 
 Functions:
     parse_syms -- parses a string using pattern notation
-    nest_split -- splits a string while aware of nesting
+    split      -- splits a string
 ''''''
 ==================================== To-do ====================================
 === Bug-fixes ===
@@ -25,13 +25,13 @@ Perhaps adjust Cat.__init__ to allow sequences of graphemes to be stored
 
 === Features ===
 Implement cat subsets - maybe?
-Perhaps write another splitting function to replace the .replace(char, ' ').split() almalgam
 
 === Style ===
 Consider where to raise/handle exceptions
 '''
 
 from collections import namedtuple
+from string import whitespace
 
 #== Exceptions ==#
 class LangException(Exception):
@@ -59,7 +59,7 @@ class Cat(list):
         if values is None:
             values = []
         elif isinstance(values, str): #we want an iteratible with each value as an element
-            values = values.replace(',',' ').split()
+            values = split(values, ',', minimal=True)
         for value in values:
             if isinstance(value, Cat): #another category
                 _values.extend(value.values)
@@ -309,8 +309,8 @@ def parse_syms(syms, cats=None):
     if cats is None:
         cats = {}
     for char in '([{}])':
-        syms.replace(char, f' {char} ')
-    syms = nest_split(syms, ' ', ('([{','}])'), 0)
+        syms = syms.replace(char, f' {char} ')
+    syms = split(syms, ' ', (0, '([{','}])'))
     for i in reversed(range(len(syms))):
         syms[i] = syms[i].replace(' ','')
         if syms[i][0] == '(': #optional - parse to tuple
@@ -350,28 +350,35 @@ def parse_word(word, sep="'", polygraphs=[]):
                     break
     return graphemes
 
-#this could potentially be changed at some point
-def nest_split(string, sep, nests, level, minimal=False):
-    '''Nesting-aware string splitting.
+def split(string, sep=None, nesting=None, minimal=False):
+    '''String splitting.
     
     Arguments:
-        string -- the string to be split (str)
-        sep    -- the separator character(s) (str)
-        nests  -- a tuple of the form (open, close) containing opening and closing nesting characters (tuple)
-        level  -- the nesting level at which splitting should take place (int)
+        string  -- the string to be split (str)
+        sep     -- the character(s) to split on (str)
+        nesting -- a tuple of the form (depth, open, close) containing the nesting depth, and opening and closing nesting characters (tuple)
+        minimal -- whether or not to perform the minimal number of splits, similar to str.split() with no arguments
     
     Returns a list.
     '''
+    if sep is None:
+        sep = whitespace
+    result = []
     depth = 0
-    for i in range(len(string)):
-        if string[i] in sep and depth == level:
-            string = string[:i] + ' ' + string[i+1:]
-        if string[i] in nests[0]:
-            depth += 1
-        if string[i] in nests[1]:
-            depth -= 1
-    if minimal:
-        return string.split()
-    else:
-        return string.split(' ')
+    while True:
+        if minimal and (nesting is None or depth == nesting[0]):
+            string = string.strip(sep)
+        for i in range(len(string)):
+            if string[i] in sep and (nesting is None or depth == nesting[0]):
+                result.append(string[:i])
+                string = string[i+1:]
+                break
+            elif string[i] in nesting[1]:
+                depth += 1
+            elif string[i] in nesting[2]:
+                depth -= 1
+        else:
+            result.append(string)
+            break
+    return result
 
