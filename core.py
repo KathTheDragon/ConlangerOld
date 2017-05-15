@@ -373,9 +373,9 @@ def split(string, sep=None, nesting=None, minimal=False):
                 result.append(string[:i])
                 string = string[i+1:]
                 break
-            elif string[i] in nesting[1]:
+            elif nesting is not None and string[i] in nesting[1]:
                 depth += 1
-            elif string[i] in nesting[2]:
+            elif nesting is not None and string[i] in nesting[2]:
                 depth -= 1
         else:
             result.append(string)
