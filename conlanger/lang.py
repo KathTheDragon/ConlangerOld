@@ -20,13 +20,13 @@ Add generating every possible word/root
 Consider where to raise/handle exceptions
 '''
 
-from core import Cat, Config, parse_syms, split
-import gen
+from .core import Cat, Config, parse_syms, split
+from . import gen
 
 #== Classes ==#
 class Language():
     '''Class for representing a single language.
-    
+
     Instance variables:
         name        -- language name (str)
         cats        -- grapheme categories (dict)
@@ -34,16 +34,16 @@ class Language():
         rootConfig  -- root configuration data (Config)
         patternFreq -- drop-off frequency for patterns (float)
         graphFreq   -- drop-off frequency for graphemes (float)
-    
+
     Methods:
         parse_patterns -- parse a string denoting generation patterns
         gen_word       -- generate words
         gen_root       -- generate roots
     '''
-    
+
     def __init__(self, name='', cats=None, wordConfig=None, rootConfig=None, patternFreq=0, graphFreq=0):
         '''Constructor for Language().
-        
+
         Arguments:
             name        -- language name (str)
             cats        -- grapheme categories (dict)
@@ -83,26 +83,26 @@ class Language():
             self.rootConfig = rootConfig
         self.patternFreq = patternFreq
         self.graphFreq = graphFreq
-    
+
     def parse_patterns(self, patterns):
         '''Parses generation patterns.
-        
+
         Arguments:
             patterns -- set of patterns to parse (str)
-        
+
         Returns a list
         '''
         patterns = split(patterns, ',', minimal=True)
         for i in range(len(patterns)):
             patterns[i] = parse_syms(patterns[i], self.cats)
         return patterns
-    
+
     def gen_word(self, num):
         '''Generates 'num' words.
-        
+
         Arguments:
             num -- number of words to generate, 0 generates every possible word (int)
-        
+
         Returns a list
         '''
         if num == 0: #generate every possible word, unimplemented
@@ -111,13 +111,13 @@ class Language():
         for i in range(num):
             results.append(gen.gen_word(self))
         return results
-    
+
     def gen_root(self, num):
         '''Generates 'num' roots.
-        
+
         Arguments:
             num -- number of roots to generate, 0 generates every possible root (int)
-        
+
         Returns a list
         '''
         if num == 0: #generate every possible word, unimplemented
@@ -130,10 +130,10 @@ class Language():
 #== Functions ==#
 def load_lang(name):
     '''Loads language data from file.
-    
+
     Arguments:
         name -- the name of the language file to load from
-    
+
     Returns a Language
     '''
     with open('langs/{}.dat'.format(name.lower()), 'r', encoding='utf-8') as f:
@@ -148,7 +148,7 @@ def load_lang(name):
 
 def save_lang(lang):
     '''Saves a language to file.
-    
+
     Arguments:
         lang -- the Language to save
     '''
@@ -161,4 +161,3 @@ def save_lang(lang):
     data = '\n'.join([name, cats, wordConfig, rootConfig, patternFreq, graphFreq])
     with open('langs/{}.dat'.format(name.lower()), 'w', encoding='utf-8') as f:
         f.write(data)
-

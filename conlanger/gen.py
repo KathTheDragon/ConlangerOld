@@ -38,9 +38,10 @@ A probability distribution can then be obtained by finding the inverse of P(n). 
 Obtaining a variant with a peak can be done by using two distributions, one reversed, with their modes overlapping. This can be done by taking the range of x corresponding to the reversed section and rescaling it as follows, where a is the frequency of the mode, and c the cumulative frequency of the bins before the mode: x -> 1-x/(a+c). Thus, when x<c, we use a distribution with m+1 bins, mode a/(a+c), and the rescaled random variable. For the remainder, we use a distribution with r-m bins, mode a/(1-c), and a rescaled variable x -> (x-c)/(1-c). Note that the mode belongs to this second distribution.
 '''
 
-from core import LangException, Cat, Word
 from random import random, choice
 from math import log, floor, ceil
+
+from .core import LangException, Cat, Word
 
 #== Constants ==#
 MAX_RUNS = 10**5 #maximum number of times something can fail to be generated
@@ -52,7 +53,7 @@ class ExceededMaxRunsError(LangException):
 #== Functions ==#
 def dist(bins, a=0, x=None): #first bin has frequency a, random variable x
     '''Returns an element of 'bins' according to a power law distribution.
-    
+
     Arguments:
         bins -- a non-empty ordered collection of elements (str, list, tuple)
         a    -- the frequency that the first bin should be selected (0 for equiprobable distribution) (float)
@@ -71,7 +72,7 @@ def dist(bins, a=0, x=None): #first bin has frequency a, random variable x
 
 def peaked_dist(bins, a=0, m=0, c=0):
     '''Returns an element of 'bins' according to a peaked power law distribution.
-    
+
     Arguments:
         bins -- an ordered collection of elements (str, list, tuple)
         a    -- the frequency that the most frequent bin should be selected (0 for equiprobable distribution) (float)
@@ -89,7 +90,7 @@ def peaked_dist(bins, a=0, m=0, c=0):
 
 def populate(pattern, frequency, all=False):
     '''Generate a word section according to 'pattern'
-    
+
     Arguments:
         pattern   -- the pattern to generate (list)
         frequency -- grapheme drop-off frequency (float)
@@ -124,12 +125,12 @@ def populate(pattern, frequency, all=False):
 
 def gen_word(lang):
     '''Generate a single word as specified by 'lang'.
-    
+
     Arguments:
         lang -- the language the word is to be generated for (Language)
-    
+
     Returns a Word
-    
+
     Raises ExceededMaxRunsError when the word repeatedly fails to be valid
     '''
     word = ['#']
@@ -167,12 +168,12 @@ def gen_word(lang):
 
 def gen_root(lang):
     '''Generate a single root as specified by 'lang'.
-    
+
     Arguments:
         lang -- the language the root is to be generated for (Language)
-    
+
     Returns a Word
-    
+
     Raises ExceededMaxRunsError when the root repeatedly fails to be valid
     '''
     #generate a root according to rootPatterns
@@ -194,4 +195,3 @@ def gen_root(lang):
         else:
             raise ExceededMaxRunsError()
     return Word(root, None, lang.cats['graphs'])
-
