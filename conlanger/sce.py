@@ -53,7 +53,7 @@ class WordUnchanged(LangException):
 #== Classes ==#
 class Rule():
     '''Class for representing a sound change rule.
-
+    
     Instance variables:
         rule  -- the rule as a string (str)
         tars  -- target segments (list)
@@ -62,16 +62,16 @@ class Rule():
         excs  -- exception environments (list)
         else_ -- the rule to apply if an exception is satisfied (Rule)
         flags -- flags for altering execution (dict)
-
+    
     Methods:
-        apply       -- apply the rule to a word
-    '''
+        apply       -- apply the rule to a word 
+    '''  
     def __init__(self, rule='', cats=None): #format is tars>reps/envs!excs flag; envs, excs, and flag are all optional
         '''Constructor for Rule
-
+        
         Arguments:
             rule -- the rule as a string
-            cats -- list of categories used to interpret the rule
+            cats -- list of categories used to interpret the rule 
         '''
         self.rule = rule
         if ' ' in rule:
@@ -131,13 +131,13 @@ class Rule():
         if self.flags['ltr']:
             self.reverse()
         return
-
+    
     def __repr__(self):
         return f"Rule('{self!s}')"
-
+    
     def __str__(self):
         return self.rule
-
+    
     def reverse(self):
         for tar in self.tars:
             tar.reverse()
@@ -155,15 +155,15 @@ class Rule():
                 exc[1].reverse()
         if self.else_ is not None:
             self.else_.reverse()
-
+    
     def apply(self, word):
         '''Apply the sound change rule to a single word.
-
+        
         Arguments:
             word -- the word to which the rule is to be applied (Word)
-
+        
         Returns a Word
-
+        
         Raises WordUnchanged if the word was not changed by the rule.
         '''
         phones = word.phones.copy()
@@ -198,10 +198,10 @@ class Rule():
         if word.phones == phones:
             raise WordUnchanged
         return word
-
+    
     def apply_match(self, match, word):
         '''Apply a replacement if a match meets the rule condition.
-
+        
         Arguments:
             match -- the match to be checked
             word  -- the word to check against
@@ -236,11 +236,11 @@ class Rule():
 #== Functions ==#
 def parse_ruleset(ruleset, cats=None):
     '''Parse a sound change ruleset.
-
+    
     Arguments:
         ruleset -- the set of rules to be parsed
         cats    -- the initial categories to be used to parse the rules
-
+    
     Returns a list.
     '''
     if cats is None:
@@ -270,15 +270,15 @@ def parse_ruleset(ruleset, cats=None):
         if ruleset[i] is None or ruleset[i].flags['ignore']:
             del ruleset[i]
     return ruleset
-
+    
 def parse_field(field, mode, cats=None):
     '''Parse a field of a sound change rule.
-
+    
     Arguments:
         field -- the field to be parsed
         mode  -- which kind of field it is
         cats  -- list of named categories
-
+    
     Returns a list
     '''
     if cats is None:
@@ -288,13 +288,12 @@ def parse_field(field, mode, cats=None):
         for env in split(field, '|', minimal=True):
             if '~' in env: #~X is equivalent to X_,_X
                 _field += Rule.parse_field('{0}_|_{0}'.format(envs[1:]), 'envs', cats)
+            elif '_' in env:
+                env = env.split('_')
+                env = [parse_syms(env[0], cats)[::-1] if env[0] else [], parse_syms(env[1], cats) if env[1] else []]
             else:
-                if '_' in env:
-                    env = env.split('_')
-                    env = [parse_syms(env[0], cats)[::-1] if env[0] else [], parse_syms(env[1], cats) if env[1] else []]
-                else:
-                    env = [parse_syms(env, cats)]
-                _field.append(env)
+                env = [parse_syms(env, cats) if env else []]
+            _field.append(env)
     else:
         for tar in split(field, ',', nesting=(0,'([{','}])'), minimal=True):
             if mode == 'tars':
@@ -305,7 +304,7 @@ def parse_field(field, mode, cats=None):
                         indices[i] = int(indices[i])
                 else:
                     indices = []
-            tar = parse_syms(tar, cats)
+            tar = parse_syms(tar, cats) if tar else []
             if mode == 'tars':
                 tar = (tar, indices)
             _field.append(tar)
@@ -313,10 +312,10 @@ def parse_field(field, mode, cats=None):
 
 def parse_flags(flags):
     '''Parse the flags of a sound change rule.
-
+    
     Arguments:
         flags -- the flags to be parsed
-
+        
     Returns a dictionary.
     '''
     _flags = {'ignore':0, 'ltr':0, 'repeat':1, 'age':1} #default values
@@ -334,12 +333,12 @@ def parse_flags(flags):
 
 def apply_ruleset(words, ruleset, cats=None, debug=False):
     '''Applies a set of sound change rules to a set of words.
-
+    
     Arguments:
         words   -- the words to which the rules are to be applied (list)
         ruleset -- the rules which are to be applied to the words (list)
         cats    -- the initial categories to be used in ruleset parsing (dict)
-
+    
     Returns a list.
     '''
     words = words.copy()
