@@ -148,7 +148,7 @@ def load_lang(name):
 
 def save_lang(lang):
     '''Saves a language to file.
-    
+
     Arguments:
         lang -- the Language to save
     '''
