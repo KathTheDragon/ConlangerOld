@@ -19,8 +19,8 @@ Functions:
 Check that tar still matches immediately before replacement (difficult)
 Check if a rule is able to run infinitely and raise an exception if it can
 - (tar in rep and rule['repeat'] < 1)
-- probably best to make a generator split() here
 Move compiling code to own functions
+Is there a better name for Rule.else_?
 
 === Features ===
 Implement $ and syllables
@@ -287,13 +287,12 @@ def parse_field(field, mode, cats=None):
         for env in split(field, '|', minimal=True):
             if '~' in env: #~X is equivalent to X_,_X
                 _field += Rule.parse_field('{0}_|_{0}'.format(envs[1:]), 'envs', cats)
+            elif '_' in env:
+                env = env.split('_')
+                env = [parse_syms(env[0], cats)[::-1] if env[0] else [], parse_syms(env[1], cats) if env[1] else []]
             else:
-                if '_' in env:
-                    env = env.split('_')
-                    env = [parse_syms(env[0], cats)[::-1] if env[0] else [], parse_syms(env[1], cats) if env[1] else []]
-                else:
-                    env = [parse_syms(env, cats)]
-                _field.append(env)
+                env = [parse_syms(env, cats) if env else []]
+            _field.append(env)
     else:
         for tar in split(field, ',', nesting=(0,'([{','}])'), minimal=True):
             if mode == 'tars':
@@ -304,7 +303,7 @@ def parse_field(field, mode, cats=None):
                         indices[i] = int(indices[i])
                 else:
                     indices = []
-            tar = parse_syms(tar, cats)
+            tar = parse_syms(tar, cats) if tar else []
             if mode == 'tars':
                 tar = (tar, indices)
             _field.append(tar)

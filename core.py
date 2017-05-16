@@ -313,7 +313,9 @@ def parse_syms(syms, cats=None):
     syms = split(syms, ' ', nesting=(0, '([{','}])'), minimal=True)
     for i in reversed(range(len(syms))):
         syms[i] = syms[i].replace(' ','')
-        if syms[i][0] == '(': #optional - parse to tuple
+        if not syms[i]:
+            del syms[i]
+        elif syms[i][0] == '(': #optional - parse to tuple
             syms[i] = tuple(parse_syms(syms[i].strip('()'), cats))
         elif syms[i][0] == '[': #category - parse to Cat
             syms[i] = syms[i].strip('[]')
@@ -321,7 +323,7 @@ def parse_syms(syms, cats=None):
                 syms[i] = Cat(syms[i])
             else: #named cat
                 syms[i] = cats[syms[i]]
-        elif syms[i][0] == '{': #subset - unimplemented, delete
+        elif syms[i][0] == '{': #unimplemented - delete
             del syms[i]
         else: #text - parse as word
             syms[i:i+1] = parse_word(syms[i])
