@@ -38,9 +38,10 @@ A probability distribution can then be obtained by finding the inverse of P(n). 
 Obtaining a variant with a peak can be done by using two distributions, one reversed, with their modes overlapping. This can be done by taking the range of x corresponding to the reversed section and rescaling it as follows, where a is the frequency of the mode, and c the cumulative frequency of the bins before the mode: x -> 1-x/(a+c). Thus, when x<c, we use a distribution with m+1 bins, mode a/(a+c), and the rescaled random variable. For the remainder, we use a distribution with r-m bins, mode a/(1-c), and a rescaled variable x -> (x-c)/(1-c). Note that the mode belongs to this second distribution.
 '''
 
-from core import LangException, Cat, Word
 from random import random, choice
 from math import log, floor, ceil
+
+from .core import LangException, Cat, Word
 
 #== Constants ==#
 MAX_RUNS = 10**5 #maximum number of times something can fail to be generated
@@ -194,4 +195,3 @@ def gen_root(lang):
         else:
             raise ExceededMaxRunsError()
     return Word(root, None, lang.cats['graphs'])
-

@@ -20,8 +20,8 @@ Add generating every possible word/root
 Consider where to raise/handle exceptions
 '''
 
-from core import Cat, Config, parse_syms, split
-import gen
+from .core import Cat, Config, parse_syms, split
+from . import gen
 
 #== Classes ==#
 class Language():
@@ -161,4 +161,3 @@ def save_lang(lang):
     data = '\n'.join([name, cats, wordConfig, rootConfig, patternFreq, graphFreq])
     with open('langs/{}.dat'.format(name.lower()), 'w', encoding='utf-8') as f:
         f.write(data)
-

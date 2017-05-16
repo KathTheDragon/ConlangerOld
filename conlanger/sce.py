@@ -40,7 +40,8 @@ Consider where to raise/handle exceptions
 '''
 
 from math import ceil
-from core import LangException, Cat, parse_syms, split
+
+from .core import LangException, Cat, parse_syms, split
 
 #== Constants ==#
 MAX_RUNS = 10**3 #maximum number of times a rule may be repeated
@@ -363,4 +364,3 @@ def apply_ruleset(words, ruleset, cats=None, debug=False):
             if rules[i].flags['age'] == 0: #if the rule has 'expired', discard it
                 del rules[i]
     return words
-
