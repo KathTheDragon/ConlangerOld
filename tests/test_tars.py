@@ -7,15 +7,18 @@ class TestMainChange(unittest.TestCase):
 
     def test_standard_change(self):
         rule = conlanger.sce.Rule(rule='a>b')
-        self.assertEqual(rule.apply('a'), 'b')
+        word = conlanger.core.Word(lexeme='a')
+        self.assertEqual(rule.apply(word), 'b')
 
     def test_addition_change(self):
         rule = conlanger.sce.Rule(rule='+b/_#')
-        self.assertEqual(rule.apply('a'), 'ab')
+        word = conlanger.core.Word(lexeme='a')
+        self.assertEqual(rule.apply(word), 'ab')
 
     def test_subtraction_change(self):
         rule = conlanger.sce.Rule(rule='-b')
-        self.assertEqual(rule.apply('ab'), 'a')
+        word = conlanger.core.Word(lexeme='ab')
+        self.assertEqual(rule.apply(word), 'a')
 
 
 suite = unittest.TestLoader().loadTestsFromTestCase(TestMainChange)
