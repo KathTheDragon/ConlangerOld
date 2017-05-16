@@ -53,7 +53,7 @@ class ExceededMaxRunsError(LangException):
 #== Functions ==#
 def dist(bins, a=0, x=None): #first bin has frequency a, random variable x
     '''Returns an element of 'bins' according to a power law distribution.
-
+    
     Arguments:
         bins -- a non-empty ordered collection of elements (str, list, tuple)
         a    -- the frequency that the first bin should be selected (0 for equiprobable distribution) (float)
@@ -72,7 +72,7 @@ def dist(bins, a=0, x=None): #first bin has frequency a, random variable x
 
 def peaked_dist(bins, a=0, m=0, c=0):
     '''Returns an element of 'bins' according to a peaked power law distribution.
-
+    
     Arguments:
         bins -- an ordered collection of elements (str, list, tuple)
         a    -- the frequency that the most frequent bin should be selected (0 for equiprobable distribution) (float)
@@ -90,7 +90,7 @@ def peaked_dist(bins, a=0, m=0, c=0):
 
 def populate(pattern, frequency, all=False):
     '''Generate a word section according to 'pattern'
-
+    
     Arguments:
         pattern   -- the pattern to generate (list)
         frequency -- grapheme drop-off frequency (float)
@@ -125,12 +125,12 @@ def populate(pattern, frequency, all=False):
 
 def gen_word(lang):
     '''Generate a single word as specified by 'lang'.
-
+    
     Arguments:
         lang -- the language the word is to be generated for (Language)
-
+    
     Returns a Word
-
+    
     Raises ExceededMaxRunsError when the word repeatedly fails to be valid
     '''
     word = ['#']
@@ -168,12 +168,12 @@ def gen_word(lang):
 
 def gen_root(lang):
     '''Generate a single root as specified by 'lang'.
-
+    
     Arguments:
         lang -- the language the root is to be generated for (Language)
-
+    
     Returns a Word
-
+    
     Raises ExceededMaxRunsError when the root repeatedly fails to be valid
     '''
     #generate a root according to rootPatterns
