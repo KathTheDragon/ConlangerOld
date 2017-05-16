@@ -364,3 +364,4 @@ def apply_ruleset(words, ruleset, cats=None, debug=False):
             if rules[i].flags['age'] == 0: #if the rule has 'expired', discard it
                 del rules[i]
     return words
+

@@ -161,3 +161,4 @@ def save_lang(lang):
     data = '\n'.join([name, cats, wordConfig, rootConfig, patternFreq, graphFreq])
     with open('langs/{}.dat'.format(name.lower()), 'w', encoding='utf-8') as f:
         f.write(data)
+
