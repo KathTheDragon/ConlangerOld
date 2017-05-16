@@ -195,3 +195,4 @@ def gen_root(lang):
         else:
             raise ExceededMaxRunsError()
     return Word(root, None, lang.cats['graphs'])
+
