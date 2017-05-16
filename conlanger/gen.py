@@ -173,7 +173,7 @@ def gen_root(lang):
         lang -- the language the root is to be generated for (Language)
 
     Returns a Word
-
+    
     Raises ExceededMaxRunsError when the root repeatedly fails to be valid
     '''
     #generate a root according to rootPatterns

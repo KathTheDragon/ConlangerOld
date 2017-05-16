@@ -381,4 +381,3 @@ def split(string, sep=None, nesting=None, minimal=False):
             result.append(string)
             break
     return result
-

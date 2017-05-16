@@ -334,7 +334,7 @@ def parse_flags(flags):
 
 def apply_ruleset(words, ruleset, cats=None, debug=False):
     '''Applies a set of sound change rules to a set of words.
-
+    
     Arguments:
         words   -- the words to which the rules are to be applied (list)
         ruleset -- the rules which are to be applied to the words (list)
