@@ -310,7 +310,7 @@ def parse_syms(syms, cats=None):
         cats = {}
     for char in '([{}])':
         syms = syms.replace(char, f' {char} ')
-    syms = split(syms, ' ', nesting=(0, '([{','}])'), minimal=True)
+    syms = split(syms, ' ', (0, '([{','}])'))
     for i in reversed(range(len(syms))):
         syms[i] = syms[i].replace(' ','')
         if not syms[i]:
